@@ -8,7 +8,7 @@ com cartela de registro integrada à planilha **KISMET RESULTADOS** (Google Shee
 - **Registro** (`/registrar`, protegido por PIN): cartela lado a lado com cálculo automático
   de subtotal, bônus, totais e vencedor; validação por categoria; confirmação antes de salvar;
   bloqueio da 4ª partida do mês (com opção de sobrescrever); rascunho salvo no aparelho.
-- **Importação** do histórico antigo (aba `Nucha & Manoel`) em um clique, sem duplicar.
+- **Histórico antigo** (aba `Nucha & Manoel`) lido automaticamente junto com a aba de partidas; importação opcional em um clique para consolidar, sem duplicar.
 
 ## Stack
 

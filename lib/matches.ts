@@ -47,7 +47,8 @@ async function ensureSheet() {
   }
 }
 
-async function readFromSheets(): Promise<Match[]> {
+/** Só as linhas da aba de partidas (uma linha por partida). */
+async function readPartidas(): Promise<Match[]> {
   const { tab } = sheetsConfig();
   await ensureSheet();
   const rows = await getValues(`${tabRef(tab)}!A2:${LAST_COL}`);
@@ -59,7 +60,38 @@ async function readFromSheets(): Promise<Match[]> {
   return sortMatches(list);
 }
 
-const readCached = unstable_cache(readFromSheets, ["kismet-matches-v1"], {
+/** Ano do histórico da aba antiga (as colunas não trazem o ano). */
+function legacyYear() {
+  const y = Number(process.env.GOOGLE_LEGACY_YEAR);
+  return Number.isInteger(y) && y > 2000 ? y : 2026;
+}
+
+/** Partidas da aba antiga ("Nucha & Manoel"). Se a aba não existir, devolve vazio. */
+async function readLegacy(): Promise<Match[]> {
+  const { legacyTab } = sheetsConfig();
+  if (!legacyTab) return [];
+  try {
+    const grid = await getValues(`${tabRef(legacyTab)}!A1:ZZ23`);
+    return grid.length ? parseLegacyGrid(grid, legacyYear()) : [];
+  } catch (e) {
+    console.warn("[kismet] aba antiga indisponível:", e instanceof Error ? e.message : e);
+    return [];
+  }
+}
+
+const slot = (m: Match) => `${m.year}-${m.month}-${m.number}`;
+
+/**
+ * Junta as duas fontes: a aba de partidas tem prioridade; partidas da aba antiga
+ * entram apenas nos meses/números que ainda não existem na aba nova.
+ */
+async function readFromSheets(): Promise<Match[]> {
+  const [partidas, legacy] = await Promise.all([readPartidas(), readLegacy()]);
+  const taken = new Set(partidas.map(slot));
+  return sortMatches([...partidas, ...legacy.filter((m) => !taken.has(slot(m)))]);
+}
+
+const readCached = unstable_cache(readFromSheets, ["kismet-matches-v2"], {
   tags: [MATCHES_TAG],
   revalidate: 300,
 });
@@ -101,6 +133,11 @@ export async function saveMatch(match: Match, overwrite: boolean): Promise<"crea
     if (!overwrite) {
       throw new MatchConflictError(`A partida ${match.number} deste mês já foi registrada.`, sameSlot);
     }
+    // partida vinda da aba antiga: grava na aba nova, que passa a ter prioridade
+    if (!sameSlot.row) {
+      await appendValues(`${tabRef(tab)}!A:${LAST_COL}`, [matchToRow(match)]);
+      return "updated";
+    }
     await updateValues(`${tabRef(tab)}!A${sameSlot.row}:${LAST_COL}${sameSlot.row}`, [matchToRow(match)]);
     return "updated";
   }
@@ -117,9 +154,9 @@ export async function importLegacy(year: number): Promise<{ imported: number; sk
   const grid = await getValues(`${tabRef(legacyTab)}!A1:ZZ23`);
   if (!grid.length) throw new Error(`Aba "${legacyTab}" não encontrada ou vazia.`);
   const legacy = parseLegacyGrid(grid, year);
-  const existing = await readFromSheets();
-  const taken = new Set(existing.map((m) => `${m.year}-${m.month}-${m.number}`));
-  const fresh = legacy.filter((m) => !taken.has(`${m.year}-${m.month}-${m.number}`));
+  const existing = await readPartidas();
+  const taken = new Set(existing.map(slot));
+  const fresh = legacy.filter((m) => !taken.has(slot(m)));
   if (fresh.length) await appendValues(`${tabRef(tab)}!A:${LAST_COL}`, fresh.map(matchToRow));
   return { imported: fresh.length, skipped: legacy.length - fresh.length };
 }

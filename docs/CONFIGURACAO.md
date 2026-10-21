@@ -64,7 +64,8 @@ https://docs.google.com/spreadsheets/d/1AbCdEf...XyZ/edit#gid=0
 | `ADMIN_PIN`                    | sim         | PIN de 4–8 dígitos para acessar `/registrar`                              |
 | `SESSION_SECRET`               | recomendada | texto aleatório longo (assina o cookie de sessão)                        |
 | `GOOGLE_SHEET_TAB`             | não         | padrão `Partidas` — criada automaticamente com cabeçalho                 |
-| `GOOGLE_LEGACY_TAB`            | não         | padrão `Nucha & Manoel` — usada só na importação do histórico            |
+| `GOOGLE_LEGACY_TAB`            | não         | padrão `Nucha & Manoel` — histórico antigo, lido automaticamente          |
+| `GOOGLE_LEGACY_YEAR`           | não         | padrão `2026` — ano das partidas da aba antiga                            |
 
 Gerar o `SESSION_SECRET`:
 
@@ -93,7 +94,9 @@ tanto `\n` literais quanto quebras de linha reais.
 
 1. Acesse `/registrar`, digite o PIN.
 2. Na primeira leitura, o app cria a aba **Partidas** com o cabeçalho completo (46 colunas).
-3. No fim da página, abra **Importar histórico da planilha antiga**, confirme o ano (**2026**) e clique em
+3. O site já mostra o histórico da aba antiga automaticamente: ele lê as duas abas e a aba
+   **Partidas** tem prioridade quando o mesmo mês/partida existe nas duas. Opcionalmente, para
+   consolidar tudo numa aba só, abra **Importar histórico da planilha antiga**, confirme o ano (**2026**) e clique em
    **Importar**. As 24 partidas de janeiro a agosto viram linhas na aba Partidas.
    Pode clicar de novo sem medo: partidas já existentes (mesmo mês e número) são ignoradas.
 4. Pronto — a landing page passa a mostrar os dados ao vivo.
