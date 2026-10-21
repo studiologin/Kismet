@@ -143,8 +143,8 @@ Dois pares mesma cor…Kismet, Total Inferior, Total] · [Ana: idem] · Vencedor
   jogo. Depois da 36ª, a sequência recomeça na rodada 1 do ano seguinte.
 - **Ao vivo, por turnos:** quem cria a partida escolhe só **quem começa**. O outro
   abre o app e entra na mesma partida. As jogadas são intercaladas, como no jogo de verdade: na sua
-  vez (jogada 1 a 13), você escolhe a categoria, marca os pontos (botões rápidos por nº de dados, "fez/riscar" ou o
-  valor) e toca em **Salvar jogada** — ela é gravada na hora e a vez passa para o outro, que recebe
+  vez (jogada 1 a 13), você escolhe a categoria, marca os pontos (botões rápidos por nº de dados, "fez/riscar" ou a
+  **soma dos dados** — o bônus de Full House +15, Quadra +35 e Kismet +50 é somado pelo app) e toca em **Salvar jogada** — ela é gravada na hora e a vez passa para o outro, que recebe
   um aviso com o que você marcou (em até 3 segundos).
 - **Desfazer:** errou? Enquanto o outro ainda não jogou, toque em *Desfazer* e a vez volta para você.
 - **Gravação de cada jogada:** ao salvar, a jogada é escrita **na hora** na aba **Nucha & Manoel**, na

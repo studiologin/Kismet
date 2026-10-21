@@ -23,7 +23,7 @@ export const MATCHES_PER_MONTH = 3;
 type Rule =
   | { kind: "multiple"; face: number } // seção superior: múltiplos da face, até 5 dados
   | { kind: "fixed"; value: number } // 0 ou valor fixo
-  | { kind: "range"; min: number; max: number }; // 0 ou intervalo
+  | { kind: "sum"; bonus: number; step?: number }; // jogador informa a soma dos dados (5–30); grava soma + bônus
 
 export type CategoryId =
   | "ases"
@@ -59,14 +59,39 @@ export const CATEGORIES: Category[] = [
   { id: "quatro", label: "Quatro", short: "4", hint: "4 por dado", section: "upper", rule: { kind: "multiple", face: 4 } },
   { id: "cinco", label: "Cinco", short: "5", hint: "5 por dado", section: "upper", rule: { kind: "multiple", face: 5 } },
   { id: "seis", label: "Seis", short: "6", hint: "6 por dado", section: "upper", rule: { kind: "multiple", face: 6 } },
-  { id: "doisPares", label: "Dois pares", short: "2P", hint: "soma dos dados", section: "lower", rule: { kind: "range", min: DICE_MIN, max: DICE_MAX } },
-  { id: "trinca", label: "Trinca", short: "3x", hint: "soma dos dados", section: "lower", rule: { kind: "range", min: DICE_MIN, max: DICE_MAX } },
+  { id: "doisPares", label: "Dois pares", short: "2P", hint: "soma dos dados", section: "lower", rule: { kind: "sum", bonus: 0 } },
+  { id: "trinca", label: "Trinca", short: "3x", hint: "soma dos dados", section: "lower", rule: { kind: "sum", bonus: 0 } },
   { id: "sequencia", label: "Sequência", short: "SQ", hint: "30 pontos", section: "lower", rule: { kind: "fixed", value: 30 } },
-  { id: "fullHouse", label: "Full House", short: "FH", hint: "soma + 15", section: "lower", rule: { kind: "range", min: DICE_MIN + 15, max: DICE_MAX + 15 } },
-  { id: "quadra", label: "Quadra", short: "4x", hint: "soma + 35", section: "lower", rule: { kind: "range", min: DICE_MIN + 35, max: DICE_MAX + 35 } },
-  { id: "yarborough", label: "Yarborough", short: "YB", hint: "soma dos dados", section: "lower", rule: { kind: "range", min: DICE_MIN, max: DICE_MAX } },
-  { id: "kismet", label: "Kismet", short: "K!", hint: "soma + 50", section: "lower", rule: { kind: "range", min: DICE_MIN + 50, max: DICE_MAX + 50 } },
+  { id: "fullHouse", label: "Full House", short: "FH", hint: "soma + 15", section: "lower", rule: { kind: "sum", bonus: 15 } },
+  { id: "quadra", label: "Quadra", short: "4x", hint: "soma + 35", section: "lower", rule: { kind: "sum", bonus: 35 } },
+  { id: "yarborough", label: "Yarborough", short: "YB", hint: "soma dos dados", section: "lower", rule: { kind: "sum", bonus: 0 } },
+  // Kismet = 5 dados iguais → a soma é sempre múltiplo de 5 (5, 10 … 30)
+  { id: "kismet", label: "Kismet", short: "K!", hint: "soma + 50", section: "lower", rule: { kind: "sum", bonus: 50, step: 5 } },
 ];
+
+export const DICE_SUM = { min: DICE_MIN, max: DICE_MAX };
+
+/** Soma dos dados → pontos da categoria (0 continua 0 = riscou). */
+export function sumToValue(cat: Category, sum: number): number {
+  if (cat.rule.kind !== "sum" || sum === 0) return sum;
+  return sum + cat.rule.bonus;
+}
+
+/** Pontos gravados → soma dos dados informada pelo jogador. */
+export function valueToSum(cat: Category, value: number): number {
+  if (cat.rule.kind !== "sum" || value === 0) return value;
+  return value - cat.rule.bonus;
+}
+
+/** Valida a soma dos dados digitada (mensagem pensada para quem está jogando). */
+export function validateSum(cat: Category, sum: number | null): string | null {
+  if (cat.rule.kind !== "sum") return null;
+  if (sum === null || Number.isNaN(sum)) return "Informe a soma (0 se riscou)";
+  if (sum === 0) return null;
+  if (!Number.isInteger(sum) || sum < DICE_MIN || sum > DICE_MAX) return `Soma entre ${DICE_MIN} e ${DICE_MAX}`;
+  if (cat.rule.step && sum % cat.rule.step !== 0) return `5 dados iguais: 5, 10, 15, 20, 25 ou 30`;
+  return null;
+}
 
 export const UPPER = CATEGORIES.filter((c) => c.section === "upper");
 export const LOWER = CATEGORIES.filter((c) => c.section === "lower");
@@ -127,8 +152,12 @@ export function validateScore(cat: Category, value: number | null | undefined): 
       return null;
     case "fixed":
       return value === r.value ? null : `0 ou ${r.value}`;
-    case "range":
-      return value >= r.min && value <= r.max ? null : `0 ou ${r.min}–${r.max}`;
+    case "sum": {
+      const sum = value - r.bonus;
+      if (sum < DICE_MIN || sum > DICE_MAX) return `0 ou ${DICE_MIN + r.bonus}–${DICE_MAX + r.bonus}`;
+      if (r.step && sum % r.step !== 0) return "Kismet: soma múltipla de 5";
+      return null;
+    }
   }
 }
 

@@ -18,6 +18,7 @@ import {
   decideWinner,
   nextBonusTier,
   validateScore,
+  validateSum,
   type Category,
   type CategoryId,
   type PlayerId,
@@ -116,8 +117,17 @@ function ScoreCell({
   }
 
   const n = toNum(value);
+  // categorias de soma com bônus: o campo mostra/recebe a SOMA DOS DADOS; o valor guardado é soma + bônus
+  const bonus = cat.rule.kind === "sum" ? cat.rule.bonus : 0;
+  const shown = bonus && value !== "" && value !== "0" ? String(Number(value) - bonus) : value;
+  const fromSum = (sum: string) => (bonus && sum !== "" && sum !== "0" ? String(Number(sum) + bonus) : sum);
+  const sumErr = bonus && error && shown !== "" ? validateSum(cat, Number(shown)) : null;
   const diceHint =
-    cat.rule.kind === "multiple" && n !== null && !error && n > 0 ? `${n / cat.rule.face} dado${n / cat.rule.face > 1 ? "s" : ""}` : null;
+    cat.rule.kind === "multiple" && n !== null && !error && n > 0
+      ? `${n / cat.rule.face} dado${n / cat.rule.face > 1 ? "s" : ""}`
+      : bonus && n !== null && !error && n > 0
+        ? `soma ${shown} + ${bonus} = ${n}`
+        : null;
 
   return (
     <div className="flex flex-col items-stretch">
@@ -132,17 +142,17 @@ function ScoreCell({
           pattern="[0-9]*"
           min={0}
           enterKeyHint="next"
-          value={value}
-          placeholder="–"
+          value={shown}
+          placeholder={bonus ? "soma" : "–"}
           aria-invalid={Boolean(error)}
-          onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
+          onChange={(e) => onChange(fromSum(e.target.value.replace(/[^\d]/g, "").slice(0, bonus ? 2 : 3)))}
           onBlur={onBlur}
           onFocus={(e) => e.currentTarget.select()}
           className="w-full rounded-xl bg-white/[0.04] py-2.5 text-center font-display text-xl font-bold tabular text-paper outline-none placeholder:text-mist/60"
         />
       </div>
       {error ? (
-        <span className="mt-1 text-center text-[0.65rem] font-semibold leading-tight text-ana">{error}</span>
+        <span className="mt-1 text-center text-[0.65rem] font-semibold leading-tight text-ana">{sumErr ?? error}</span>
       ) : diceHint ? (
         <span className="mt-1 text-center text-[0.65rem] text-mist">{diceHint}</span>
       ) : null}

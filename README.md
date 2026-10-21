@@ -55,13 +55,13 @@ Definidas em `lib/kismet.ts` — as mesmas **13 categorias** da aba `Nucha & Man
 | ---------------------- | ------------------------- | ------------------- |
 | Ases … Seis            | soma da face              | múltiplo da face, até 5 dados |
 | Bônus superior         | 63–70: 35 · 71–77: 55 · 78+: 75 | automático |
-| Dois pares (2 Pair)    | soma dos dados            | 0 ou 5–30           |
-| Trinca                 | soma dos dados            | 0 ou 5–30           |
+| Dois pares (2 Pair)    | soma dos dados            | informa a soma (5–30) |
+| Trinca                 | soma dos dados            | informa a soma (5–30) |
 | Sequência              | 30                        | 0 ou 30             |
-| Full House             | soma + 15                 | 0 ou 20–45          |
-| Quadra                 | soma + **35** (regra da planilha) | 0 ou 40–65  |
-| Yarborough             | soma dos dados            | 0 ou 5–30           |
-| Kismet                 | soma + 50                 | 0 ou 55–80          |
+| Full House             | soma + 15                 | informa a soma; o app soma o bônus |
+| Quadra                 | soma + **35** (regra da planilha) | informa a soma; o app soma o bônus |
+| Yarborough             | soma dos dados            | informa a soma (5–30) |
+| Kismet                 | soma + 50                 | toca no dado que saiu 5× (soma 5–30) |
 
 Campo riscado = **0**. O botão **“Vazios = 0”** zera de uma vez as categorias não usadas.
 

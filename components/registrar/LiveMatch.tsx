@@ -25,7 +25,10 @@ import {
   computeTotals,
   decideWinner,
   nextBonusTier,
+  DICE_SUM,
+  sumToValue,
   validateScore,
+  validateSum,
   type Category,
   type CategoryId,
   type PlayerId,
@@ -64,8 +67,11 @@ function PlayComposer({
   const [pending, start] = useTransition();
   const remaining = CATEGORIES.filter((c) => scores[c.id] === undefined);
   const category = cat ? catOf(cat) : null;
-  const n = value === "" ? null : Number(value);
-  const err = category && n !== null ? validateScore(category, n) : null;
+  // nas categorias de soma, o jogador digita a SOMA DOS DADOS; os pontos = soma + bônus
+  const raw = value === "" ? null : Number(value);
+  const isSum = category?.rule.kind === "sum";
+  const n = raw === null || !category ? null : isSum ? sumToValue(category, raw) : raw;
+  const err = !category || raw === null ? null : isSum ? validateSum(category, raw) : validateScore(category, raw);
   const ready = Boolean(category && n !== null && !err);
   const accent = me === "manoel" ? "bg-manoel text-ink" : "bg-ana text-ink";
   const accentRing = me === "manoel" ? "ring-manoel/70" : "ring-ana/70";
@@ -194,31 +200,83 @@ function PlayComposer({
             </div>
           )}
 
-          {category.rule.kind === "range" && (
-            <div className="grid grid-cols-[1fr_auto] gap-2">
-              <div className={`rounded-2xl ring-1 focus-within:ring-2 ${err ? "ring-ana/70" : "ring-white/15"}`}>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  autoFocus
-                  aria-label={`Pontos em ${category.label}`}
-                  value={value === "0" ? "" : value}
-                  placeholder={`${category.rule.min}–${category.rule.max}`}
-                  onChange={(e) => setValue(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
-                  className="min-h-16 w-full rounded-2xl bg-white/[0.05] text-center font-display text-3xl font-extrabold tabular text-paper outline-none placeholder:text-lg placeholder:text-mist/60"
-                />
+          {category.rule.kind === "sum" && category.rule.step && (
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-mist">Qual dado saiu 5 vezes?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3, 4, 5, 6].map((face) => {
+                  const sum = String(face * 5);
+                  const on = value === sum;
+                  return (
+                    <button
+                      key={face}
+                      type="button"
+                      onClick={() => setValue(sum)}
+                      className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl ring-1 transition active:scale-95 ${
+                        on ? `${accent} ring-transparent` : "bg-white/[0.05] ring-white/10"
+                      }`}
+                    >
+                      <DieFace value={face} size={22} />
+                      <span className={`text-[0.7rem] font-semibold ${on ? "text-ink/70" : "text-mist"}`}>
+                        soma {sum} → {face * 5 + (category.rule as { bonus: number }).bonus}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
               <button
                 type="button"
                 onClick={() => setValue("0")}
-                className={`min-h-16 rounded-2xl px-5 text-sm font-bold ring-1 transition active:scale-95 ${
+                className={`mt-2 min-h-12 w-full rounded-2xl text-sm font-bold ring-1 transition active:scale-95 ${
                   value === "0" ? `${accent} ring-transparent` : "bg-white/[0.05] text-fog ring-white/10"
                 }`}
               >
-                ✕ riscar
+                ✕ riscar Kismet
               </button>
             </div>
+          )}
+
+          {category.rule.kind === "sum" && !category.rule.step && (
+            <div>
+              <label htmlFor="dice-sum" className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-mist">
+                Soma dos 5 dados
+              </label>
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <div className={`rounded-2xl ring-1 focus-within:ring-2 ${err ? "ring-ana/70" : "ring-white/15"}`}>
+                  <input
+                    id="dice-sum"
+                    type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoFocus
+                    aria-label={`Soma dos dados em ${category.label}`}
+                    value={value === "0" ? "" : value}
+                    placeholder={`${DICE_SUM.min}–${DICE_SUM.max}`}
+                    onChange={(e) => setValue(e.target.value.replace(/[^\d]/g, "").slice(0, 2))}
+                    className="min-h-16 w-full rounded-2xl bg-white/[0.05] text-center font-display text-3xl font-extrabold tabular text-paper outline-none placeholder:text-lg placeholder:text-mist/60"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setValue("0")}
+                  className={`min-h-16 rounded-2xl px-5 text-sm font-bold ring-1 transition active:scale-95 ${
+                    value === "0" ? `${accent} ring-transparent` : "bg-white/[0.05] text-fog ring-white/10"
+                  }`}
+                >
+                  ✕ riscar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isSum && ready && n !== null && n > 0 && (category.rule as { bonus: number }).bonus > 0 && (
+            <p className="mt-3 text-center font-display text-lg font-bold tabular">
+              <span className="text-fog">soma {raw}</span>
+              <span className="text-mist"> + </span>
+              <span className="text-gold">bônus {(category.rule as { bonus: number }).bonus}</span>
+              <span className="text-mist"> = </span>
+              <span className="text-paper">{n} pts</span>
+            </p>
           )}
           {err && <p className="mt-2 text-sm font-semibold text-ana">{err}</p>}
 
