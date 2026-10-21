@@ -665,7 +665,7 @@ export function LiveMatch({
   const lastMine = myPlays.at(-1);
 
   return (
-    <div className="space-y-4 pb-36">
+    <div className="space-y-4 pb-36 short:pb-6">
       {/* cabeçalho + placar da partida */}
       <div className="glass rounded-[1.5rem] p-4">
         <div className="flex items-start justify-between gap-3">
@@ -711,105 +711,111 @@ export function LiveMatch({
         </div>
       </div>
 
-      {/* sua vez / aguardando / fim */}
-      {done ? (
-        <section className="glass rounded-[1.5rem] p-5 text-center ring-1 ring-gold/40">
-          <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-gold">Cartelas completas</p>
-          <p className="mt-1 text-xs text-fog">A gravação automática não terminou — toque abaixo para gravar.</p>
-          <p className="mt-2 font-display text-4xl font-extrabold tabular">
-            <span className="text-manoel">{totals.manoel.total}</span>
-            <span className="mx-2 text-mist">×</span>
-            <span className="text-ana">{totals.ana.total}</span>
-          </p>
-          <p className="mt-1 font-bold text-gold">{winner === "empate" ? "Empate!" : `${PLAYER_NAME[winner]} venceu`}</p>
-          <button
-            type="button"
-            onClick={() => setConfirm("finalize")}
-            className="mt-5 min-h-14 w-full rounded-2xl bg-gold text-base font-extrabold text-ink transition active:scale-[.98]"
-          >
-            Gravar resultado agora
-          </button>
-          {canUndo && (
-            <button type="button" disabled={pending} onClick={undo} className="mt-3 text-sm font-semibold text-mist disabled:opacity-50">
-              Desfazer minha última jogada
-            </button>
-          )}
-        </section>
-      ) : myTurn ? (
-        <PlayComposer
-          key={myPlays.length}
-          me={me}
-          scores={live.entries[me]?.scores ?? {}}
-          round={myPlays.length + 1}
-          otherDone={otherPlays.length >= TOTAL_ROUNDS}
-          onSaved={(r, play) => {
-            if (r.finished) {
-              // última jogada: a partida já foi gravada no servidor
-              finishing.current = true;
-              liveKey.current = null;
-              setLive(null);
-              setResult({ ok: true, summary: r.finished });
-              router.refresh();
-              return;
-            }
-            applyServer(r.state);
-            flashCell(me, play.cat);
-            if (r.finalizeError) notify("error", `Jogada salva, mas a partida não foi gravada: ${r.finalizeError}`);
-            else notify("ok", `Jogada salva · vez de ${PLAYER_NAME[other]}`);
-          }}
-          onError={(msg) => notify("error", msg)}
-        />
-      ) : (
-        <section className="glass rounded-[1.5rem] p-5" aria-live="polite">
-          <div className="flex items-center gap-3">
-            <span className="relative flex size-3">
-              <span className={`absolute inline-flex size-full animate-ping rounded-full opacity-75 ${other === "manoel" ? "bg-manoel" : "bg-ana"}`} />
-              <span className={`relative inline-flex size-3 rounded-full ${other === "manoel" ? "bg-manoel" : "bg-ana"}`} />
-            </span>
-            <p className="font-display text-xl font-extrabold">
-              Vez de <span className={nameColor(other)}>{PLAYER_NAME[other]}</span>
+      {/* retrato: jogada → cartela → últimas jogadas · paisagem: jogada e últimas jogadas à esquerda, cartela à direita */}
+      <div className="space-y-4 sm:landscape:grid sm:landscape:grid-cols-2 sm:landscape:items-start sm:landscape:gap-4 sm:landscape:space-y-0">
+        {/* sua vez / aguardando / fim */}
+        {done ? (
+          <section className="glass rounded-[1.5rem] p-5 text-center ring-1 ring-gold/40">
+            <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-gold">Cartelas completas</p>
+            <p className="mt-1 text-xs text-fog">A gravação automática não terminou — toque abaixo para gravar.</p>
+            <p className="mt-2 font-display text-4xl font-extrabold tabular">
+              <span className="text-manoel">{totals.manoel.total}</span>
+              <span className="mx-2 text-mist">×</span>
+              <span className="text-ana">{totals.ana.total}</span>
             </p>
-            <span className="ml-auto text-xs text-mist">
-              rodada {otherPlays.length + 1}/{TOTAL_ROUNDS}
-            </span>
-          </div>
-          {!live.entries[other] && <p className="mt-2 text-sm text-fog">Aguardando {PLAYER_NAME[other]} abrir o app…</p>}
-          {lastMine && (
-            <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] px-3 py-2.5 text-sm">
-              <span className="text-fog">
-                Sua jogada: <b className="text-paper">{catOf(lastMine.cat).label}</b> · {fmtValue(lastMine.value)}
+            <p className="mt-1 font-bold text-gold">{winner === "empate" ? "Empate!" : `${PLAYER_NAME[winner]} venceu`}</p>
+            <button
+              type="button"
+              onClick={() => setConfirm("finalize")}
+              className="mt-5 min-h-14 w-full rounded-2xl bg-gold text-base font-extrabold text-ink transition active:scale-[.98]"
+            >
+              Gravar resultado agora
+            </button>
+            {canUndo && (
+              <button type="button" disabled={pending} onClick={undo} className="mt-3 text-sm font-semibold text-mist disabled:opacity-50">
+                Desfazer minha última jogada
+              </button>
+            )}
+          </section>
+        ) : myTurn ? (
+          <PlayComposer
+            key={myPlays.length}
+            me={me}
+            scores={live.entries[me]?.scores ?? {}}
+            round={myPlays.length + 1}
+            otherDone={otherPlays.length >= TOTAL_ROUNDS}
+            onSaved={(r, play) => {
+              if (r.finished) {
+                // última jogada: a partida já foi gravada no servidor
+                finishing.current = true;
+                liveKey.current = null;
+                setLive(null);
+                setResult({ ok: true, summary: r.finished });
+                router.refresh();
+                return;
+              }
+              applyServer(r.state);
+              flashCell(me, play.cat);
+              if (r.finalizeError) notify("error", `Jogada salva, mas a partida não foi gravada: ${r.finalizeError}`);
+              else notify("ok", `Jogada salva · vez de ${PLAYER_NAME[other]}`);
+            }}
+            onError={(msg) => notify("error", msg)}
+          />
+        ) : (
+          <section className="glass rounded-[1.5rem] p-5" aria-live="polite">
+            <div className="flex items-center gap-3">
+              <span className="relative flex size-3">
+                <span className={`absolute inline-flex size-full animate-ping rounded-full opacity-75 ${other === "manoel" ? "bg-manoel" : "bg-ana"}`} />
+                <span className={`relative inline-flex size-3 rounded-full ${other === "manoel" ? "bg-manoel" : "bg-ana"}`} />
               </span>
-              {canUndo && (
-                <button type="button" disabled={pending} onClick={undo} className="shrink-0 font-bold text-gold disabled:opacity-50">
-                  Desfazer
-                </button>
-              )}
+              <p className="font-display text-xl font-extrabold">
+                Vez de <span className={nameColor(other)}>{PLAYER_NAME[other]}</span>
+              </p>
+              <span className="ml-auto text-xs text-mist">
+                rodada {otherPlays.length + 1}/{TOTAL_ROUNDS}
+              </span>
             </div>
-          )}
-        </section>
-      )}
+            {!live.entries[other] && <p className="mt-2 text-sm text-fog">Aguardando {PLAYER_NAME[other]} abrir o app…</p>}
+            {lastMine && (
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] px-3 py-2.5 text-sm">
+                <span className="text-fog">
+                  Sua jogada: <b className="text-paper">{catOf(lastMine.cat).label}</b> · {fmtValue(lastMine.value)}
+                </span>
+                {canUndo && (
+                  <button type="button" disabled={pending} onClick={undo} className="shrink-0 font-bold text-gold disabled:opacity-50">
+                    Desfazer
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        )}
 
-      <ScoreSheet me={me} live={live} flash={flash} lastPlay={lastOverall ? { player: lastOverall.player, cat: lastOverall.cat } : null} />
+        <div className="sm:landscape:col-start-2 sm:landscape:row-span-2 sm:landscape:row-start-1">
+          <ScoreSheet me={me} live={live} flash={flash} lastPlay={lastOverall ? { player: lastOverall.player, cat: lastOverall.cat } : null} />
+        </div>
 
-      {/* últimas jogadas */}
-      {feed.length > 0 && (
-        <section aria-label="Últimas jogadas" className="glass rounded-[1.5rem] p-4">
-          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-[0.25em] text-mist">Últimas jogadas</p>
-          <ol className="space-y-1.5">
-            {[...feed]
-              .reverse()
-              .slice(0, 4)
-              .map((p) => (
-                <li key={`${p.player}-${p.at}`} className="flex items-center gap-2 text-sm">
-                  <span className="w-14 shrink-0 text-xs text-mist">rod. {p.round}</span>
-                  <span className={`font-bold ${nameColor(p.player)}`}>{p.player === me ? "Você" : PLAYER_NAME[p.player]}</span>
-                  <span className="truncate text-fog">{catOf(p.cat).label}</span>
-                  <span className="ml-auto font-display font-bold tabular">{p.value === 0 ? "✕" : `+${p.value}`}</span>
-                </li>
-              ))}
-          </ol>
-        </section>
-      )}
+        {/* últimas jogadas */}
+        {feed.length > 0 && (
+          <section aria-label="Últimas jogadas" className="glass rounded-[1.5rem] p-4">
+            <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-[0.25em] text-mist">Últimas jogadas</p>
+            <ol className="space-y-1.5">
+              {[...feed]
+                .reverse()
+                .slice(0, 4)
+                .map((p) => (
+                  <li key={`${p.player}-${p.at}`} className="flex items-center gap-2 text-sm">
+                    <span className="w-14 shrink-0 text-xs text-mist">rod. {p.round}</span>
+                    <span className={`font-bold ${nameColor(p.player)}`}>{p.player === me ? "Você" : PLAYER_NAME[p.player]}</span>
+                    <span className="truncate text-fog">{catOf(p.cat).label}</span>
+                    <span className="ml-auto font-display font-bold tabular">{p.value === 0 ? "✕" : `+${p.value}`}</span>
+                  </li>
+                ))}
+            </ol>
+          </section>
+        )}
+
+      </div>
 
       <div className="flex flex-wrap justify-center gap-4 pt-2 text-sm">
         <button type="button" onClick={() => setConfirm("cancel")} className="font-semibold text-mist hover:text-ana">
@@ -821,7 +827,7 @@ export function LiveMatch({
       </div>
 
       {/* barra fixa com o placar da partida */}
-      <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 px-3 md:bottom-4">
+      <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 px-3 short:hidden lg:bottom-4">
         <div className="glass mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-2xl !bg-ink/85 px-4 py-2.5">
           <p className="font-display text-2xl font-extrabold leading-none tabular">
             <span className="text-manoel">{totals.manoel.total}</span>

@@ -7,8 +7,8 @@ import type { PlayerId } from "@/lib/kismet";
 export function AppTopBar({ player, title, back }: { player: PlayerId; title: string; back?: string }) {
   const color = player === "manoel" ? "text-manoel bg-manoel/10 ring-manoel/30" : "text-ana bg-ana/10 ring-ana/30";
   return (
-    <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-ink/80 px-3 pb-2.5 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
-      <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+    <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-ink/80 px-3 pb-2.5 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl short:pb-1.5 short:pt-1.5">
+      <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 sm:landscape:max-w-6xl">
         <div className="flex min-w-0 items-center gap-2.5">
           {back ? (
             <Link href={back} aria-label="Voltar" className="grid size-9 place-items-center rounded-xl bg-white/[0.06] text-lg">

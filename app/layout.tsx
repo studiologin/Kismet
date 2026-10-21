@@ -3,6 +3,9 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { BottomNav } from "@/components/app/BottomNav";
 import { PwaSetup } from "@/components/app/PwaSetup";
+import { UpdateWatcher } from "@/components/app/UpdateWatcher";
+import { getMatches } from "@/lib/matches";
+import { dataStamp } from "@/lib/stamp";
 import { Providers } from "@/components/ui/Providers";
 
 // Fontes self-hosted (OFL) com preload e métricas de fallback ajustadas (evita layout shift)
@@ -46,7 +49,11 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // carimbo dos dados exibidos nesta página (o aviso de "novos resultados" compara com o servidor)
+  const { matches, source } = await getMatches();
+  const stamp = source === "error" ? null : dataStamp(matches);
+
   return (
     <html lang="pt-BR" className={`${display.variable} ${sans.variable}`}>
       <body className="min-h-svh">
@@ -54,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <BottomNav />
           <PwaSetup />
+          <UpdateWatcher dataStamp={stamp} />
         </Providers>
       </body>
     </html>

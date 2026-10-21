@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* celular deitado (paisagem com pouca altura): barras compactas e layout em colunas */
+@custom-variant short (@media (orientation: landscape) and (max-height: 540px));
+
 @theme inline {
   --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
@@ -38,6 +41,12 @@ html {
 html,
 body {
   overflow-x: clip;
+}
+
+/* respeita o entalhe (notch) quando o celular está deitado */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 body {

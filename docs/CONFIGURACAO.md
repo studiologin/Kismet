@@ -153,4 +153,9 @@ Dois pares mesma cor…Kismet, Total Inferior, Total] · [Ana: idem] · Vencedor
   - *Android (Chrome):* abra o site → aparece "Instalar o Kismet" (ou menu ⋮ → *Instalar app*).
   - *iPhone (Safari):* botão *Compartilhar* → *Adicionar à Tela de Início*.
   O app abre em tela cheia direto na partida, com navegação inferior (Placar · Partida · Histórico).
+- **Rotação:** o app acompanha o giro do celular (se a rotação automática estiver ligada). Deitado,
+  a partida mostra a jogada e a cartela lado a lado, com as barras compactas.
+- **Atualizações:** um aviso aparece no topo quando (a) há uma **versão nova do app** (após um deploy)
+  ou (b) há **resultados novos** na planilha. Tocar em *Atualizar* aplica; *Depois* adia até a próxima
+  novidade. Durante a partida ao vivo o aviso de dados não aparece (a tela já se sincroniza sozinha).
 

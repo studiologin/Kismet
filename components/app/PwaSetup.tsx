@@ -11,17 +11,13 @@ interface BeforeInstallPromptEvent extends Event {
 
 const DISMISS_KEY = "kismet-install-dismissed";
 
-/** Registra o service worker e oferece "Instalar app" (Android/Chrome) ou explica o passo no iPhone. */
+/** Oferece "Instalar app" (Android/Chrome) ou explica o passo no iPhone. O service worker é registrado no UpdateWatcher. */
 export function PwaSetup() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [ios, setIos] = useState(false);
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
-    }
-
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (navigator as Navigator & { standalone?: boolean }).standalone === true;
@@ -72,7 +68,7 @@ export function PwaSetup() {
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 30, opacity: 0 }}
-          className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] mx-auto max-w-sm md:bottom-6"
+          className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] mx-auto max-w-sm short:bottom-[calc(3.75rem+env(safe-area-inset-bottom))] lg:bottom-6"
           role="dialog"
           aria-label="Instalar o app"
         >

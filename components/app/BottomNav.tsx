@@ -18,12 +18,12 @@ export function BottomNav() {
 
   return (
     <>
-      <div aria-hidden className="h-[calc(4.25rem+env(safe-area-inset-bottom))] md:hidden" />
+      <div aria-hidden className="h-[calc(4.25rem+env(safe-area-inset-bottom))] short:h-[calc(3rem+env(safe-area-inset-bottom))] lg:hidden" />
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-white/[0.08] bg-ink/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-white/[0.08] bg-ink/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
       >
-        <ul className="mx-auto grid h-[4.25rem] max-w-md grid-cols-3">
+        <ul className="mx-auto grid h-[4.25rem] max-w-md grid-cols-3 short:h-12 short:max-w-lg">
           {ITEMS.map((it) => {
             const on = active(it.href);
             const showLive = it.href === "/registrar" && live;
@@ -32,12 +32,12 @@ export function BottomNav() {
                 <Link
                   href={it.href}
                   aria-current={on ? "page" : undefined}
-                  className={`relative flex h-full flex-col items-center justify-center gap-1 text-[0.7rem] font-bold transition-colors ${
+                  className={`relative flex h-full flex-col items-center justify-center gap-1 text-[0.7rem] font-bold transition-colors short:flex-row short:gap-2 short:text-xs ${
                     on ? "text-paper" : "text-mist"
                   }`}
                 >
                   {on && <span className="absolute top-0 h-0.5 w-10 rounded-full bg-gold" />}
-                  <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <svg viewBox="0 0 24 24" className="size-6 short:size-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d={it.icon} />
                   </svg>
                   {it.label}

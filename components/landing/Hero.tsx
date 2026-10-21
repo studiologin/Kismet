@@ -66,7 +66,7 @@ function PlayerScore({ id, wins, leader, align }: { id: PlayerId; wins: number; 
         {align === "right" && leader && <Crown className="size-4 text-gold" />}
       </div>
       <div
-        className="font-display font-extrabold leading-[0.82] tracking-[-0.06em] tabular text-[clamp(6.5rem,26vw,15rem)]"
+        className="font-display font-extrabold leading-[0.82] tracking-[-0.06em] tabular text-[clamp(4.5rem,min(26vw,34svh),15rem)] short:text-[clamp(4rem,30svh,9rem)]"
       >
         <SlotNumber value={wins} className="text-paper" />
       </div>

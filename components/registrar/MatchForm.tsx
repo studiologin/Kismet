@@ -621,7 +621,7 @@ export function MatchForm({
       </section>
 
       {/* barra fixa de totais */}
-      <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 px-3 md:bottom-4">
+      <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 px-3 short:bottom-[calc(3rem+env(safe-area-inset-bottom))] lg:bottom-4">
         <div className="glass mx-auto flex max-w-3xl items-center gap-3 rounded-2xl !bg-ink/80 p-2.5 pl-4">
           <div className="min-w-0 flex-1">
             <p className="font-display text-2xl font-extrabold leading-none tabular">
