@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { DEMO_MATCHES } from "./demo-data";
 import {
   addTab,
+  clearValues,
   appendValues,
   getValues,
   isSheetsConfigured,
@@ -12,7 +13,8 @@ import {
   updateValues,
 } from "./google-sheets";
 import { MATCHES_PER_MONTH } from "./kismet";
-import { parseLegacyGrid } from "./legacy";
+import { legacyYear, parseLegacyGrid } from "./legacy";
+import { getLiveState } from "./live";
 import { SHEET_HEADER, matchToRow, rowToMatch, sortMatches, type Match } from "./match";
 
 export const MATCHES_TAG = "matches";
@@ -37,14 +39,38 @@ export interface MatchesResult {
 }
 
 /** Garante que a aba exista e tenha cabeçalho. */
+/** Colunas do formato antigo (com Flush e Full House mesma cor) — usadas só na migração. */
+const OLD_DROP = [16, 18, 36, 38]; // Manoel/Ana · Flush e Full House mesma cor
+const OLD_WIDTH = 46;
+
+let headerChecked = false;
+
+/** Garante que a aba exista e tenha o cabeçalho atual (migra o formato antigo, se preciso). */
 async function ensureSheet() {
   const { tab } = sheetsConfig();
+  if (headerChecked) return;
   const tabs = await listTabs();
   if (!tabs.includes(tab)) await addTab(tab);
-  const header = await getValues(`${tabRef(tab)}!A1:${LAST_COL}1`);
-  if (!header.length || !header[0]?.length) {
-    await updateValues(`${tabRef(tab)}!A1:${LAST_COL}1`, [SHEET_HEADER]);
+  const header = (await getValues(`${tabRef(tab)}!A1:AZ1`))[0] ?? [];
+  const same = header.length === SHEET_HEADER.length && SHEET_HEADER.every((h, i) => header[i] === h);
+  if (!same) {
+    if (header.some((h) => String(h).includes("Flush"))) {
+      // formato antigo: remove as colunas de Flush/Full House mesma cor e regrava as linhas
+      const rows = await getValues(`${tabRef(tab)}!A2:AZ`);
+      const migrated: (string | number)[][] = [];
+      rows.forEach((r, i) => {
+        const padded = Array.from({ length: OLD_WIDTH }, (_, k) => (r[k] ?? "") as string | number);
+        const reduced = padded.filter((_, k) => !OLD_DROP.includes(k));
+        const m = rowToMatch(reduced, i + 2);
+        if (m) migrated.push(matchToRow(m));
+      });
+      await clearValues(`${tabRef(tab)}!A1:AZ${rows.length + 1}`);
+      await updateValues(`${tabRef(tab)}!A1:${LAST_COL}${migrated.length + 1}`, [SHEET_HEADER, ...migrated]);
+    } else {
+      await updateValues(`${tabRef(tab)}!A1:${LAST_COL}1`, [SHEET_HEADER]);
+    }
   }
+  headerChecked = true;
 }
 
 /** Só as linhas da aba de partidas (uma linha por partida). */
@@ -60,11 +86,6 @@ async function readPartidas(): Promise<Match[]> {
   return sortMatches(list);
 }
 
-/** Ano do histórico da aba antiga (as colunas não trazem o ano). */
-function legacyYear() {
-  const y = Number(process.env.GOOGLE_LEGACY_YEAR);
-  return Number.isInteger(y) && y > 2000 ? y : 2026;
-}
 
 /** Partidas da aba antiga ("Nucha & Manoel"). Se a aba não existir, devolve vazio. */
 async function readLegacy(): Promise<Match[]> {
@@ -86,8 +107,14 @@ const slot = (m: Match) => `${m.year}-${m.month}-${m.number}`;
  * entram apenas nos meses/números que ainda não existem na aba nova.
  */
 async function readFromSheets(): Promise<Match[]> {
-  const [partidas, legacy] = await Promise.all([readPartidas(), readLegacy()]);
+  const [partidas, legacy, live] = await Promise.all([
+    readPartidas(),
+    readLegacy(),
+    getLiveState().catch(() => null),
+  ]);
   const taken = new Set(partidas.map(slot));
+  // a rodada em andamento já tem jogadas escritas na aba antiga, mas ainda não terminou
+  if (live) taken.add(`${live.year}-${live.month}-${live.number}`);
   return sortMatches([...partidas, ...legacy.filter((m) => !taken.has(slot(m)))]);
 }
 

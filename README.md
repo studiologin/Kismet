@@ -49,18 +49,16 @@ Passo a passo da Service Account e da planilha: **[docs/CONFIGURACAO.md](docs/CO
 
 ## Regras de pontuação
 
-Definidas em `lib/kismet.ts` (validação, cálculo e cabeçalho da planilha leem tudo de lá):
+Definidas em `lib/kismet.ts` — as mesmas **13 categorias** da aba `Nucha & Manoel` (validação, cálculo e planilha leem tudo de lá):
 
 | Categoria              | Pontos                    | Validação           |
 | ---------------------- | ------------------------- | ------------------- |
 | Ases … Seis            | soma da face              | múltiplo da face, até 5 dados |
 | Bônus superior         | 63–70: 35 · 71–77: 55 · 78+: 75 | automático |
-| Dois pares mesma cor   | soma dos dados            | 0 ou 5–30           |
+| Dois pares (2 Pair)    | soma dos dados            | 0 ou 5–30           |
 | Trinca                 | soma dos dados            | 0 ou 5–30           |
 | Sequência              | 30                        | 0 ou 30             |
-| Flush                  | 35                        | 0 ou 35             |
 | Full House             | soma + 15                 | 0 ou 20–45          |
-| Full House mesma cor   | soma + 20                 | 0 ou 25–50          |
 | Quadra                 | soma + **35** (regra da planilha) | 0 ou 40–65  |
 | Yarborough             | soma dos dados            | 0 ou 5–30           |
 | Kismet                 | soma + 50                 | 0 ou 55–80          |

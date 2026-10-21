@@ -10,8 +10,31 @@ import { buildMatch, type Match } from "./match";
  *   3  → nomes (Nucha / Manoel)
  *   4–9   → Ases … Seis
  *   15–21 → 2 Pair, 3 of a kind, Straight, Full House, 4 of a kind, Yarborough, Kismet
- * Categorias que não existiam (Flush, Full House mesma cor) entram como 0.
+ * As 13 categorias são as mesmas do app (Ases…Seis, 2 Pair…Kismet).
  */
+
+/** Linha de cada categoria na aba antiga (a mesma usada para ler e para escrever). */
+export const LEGACY_ROW: Record<CategoryId, number> = {
+  ases: 4,
+  dois: 5,
+  tres: 6,
+  quatro: 7,
+  cinco: 8,
+  seis: 9,
+  doisPares: 15,
+  trinca: 16,
+  sequencia: 17,
+  fullHouse: 18,
+  quadra: 19,
+  yarborough: 20,
+  kismet: 21,
+};
+
+/** Ano das partidas da aba antiga (as colunas não trazem o ano). */
+export function legacyYear() {
+  const y = Number(process.env.GOOGLE_LEGACY_YEAR);
+  return Number.isInteger(y) && y > 2000 ? y : 2026;
+}
 
 const LEGACY_UPPER_ROWS = [4, 5, 6, 7, 8, 9];
 const LEGACY_UPPER_IDS: CategoryId[] = ["ases", "dois", "tres", "quatro", "cinco", "seis"];

@@ -143,10 +143,15 @@ Dois pares mesma cor…Kismet, Total Inferior, Total] · [Ana: idem] · Vencedor
   jogo. Depois da 36ª, a sequência recomeça na rodada 1 do ano seguinte.
 - **Ao vivo, por turnos:** quem cria a partida escolhe só **quem começa**. O outro
   abre o app e entra na mesma partida. As jogadas são intercaladas, como no jogo de verdade: na sua
-  vez (jogada 1 a 15), você escolhe a categoria, marca os pontos (botões rápidos por nº de dados, "fez/riscar" ou o
+  vez (jogada 1 a 13), você escolhe a categoria, marca os pontos (botões rápidos por nº de dados, "fez/riscar" ou o
   valor) e toca em **Salvar jogada** — ela é gravada na hora e a vez passa para o outro, que recebe
   um aviso com o que você marcou (em até 3 segundos).
 - **Desfazer:** errou? Enquanto o outro ainda não jogou, toque em *Desfazer* e a vez volta para você.
+- **Gravação de cada jogada:** ao salvar, a jogada é escrita **na hora** na aba **Nucha & Manoel**, na
+  coluna da rodada/jogador e na linha da categoria (ex.: rodada 25 → Nucha = coluna BA, Manoel = BB;
+  Ases = linha 4 … Kismet = linha 21). As fórmulas da planilha (totais, bônus, vencedor) recalculam
+  sozinhas. *Desfazer* limpa a célula e *Cancelar partida* limpa as duas colunas da rodada. O placar
+  do site só conta a rodada quando ela termina.
 - **Fim automático:** a última jogada da partida (botão *Salvar e encerrar*) já grava o resultado na
   aba **Partidas**, limpa a **AoVivo** e atualiza o placar — os dois celulares mostram o encerramento.
   Se a gravação falhar (ex.: sem internet), aparece *Gravar resultado agora* para tentar de novo.

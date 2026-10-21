@@ -59,7 +59,7 @@ export default async function HomePage() {
           streak={stats.currentStreak}
           seasonLabel={seasonLabel}
         />
-        <Marquee words={["Ases", "Trinca", "Full House", "Flush", "Quadra", "Yarborough", "Kismet"]} />
+        <Marquee words={["Ases", "Trinca", "Full House", "Sequência", "Quadra", "Yarborough", "Kismet"]} />
         <MonthNow year={next.year} month={next.month} nextRound={next.round} matches={monthMatches} />
         <StatsSection stats={stats} />
         <section id="evolucao" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-20 sm:px-6 sm:py-28">

@@ -20,7 +20,7 @@ export function ImportPanel({ defaultYear, legacyTab }: { defaultYear: number; l
         <p>
           Lê a aba <strong className="text-paper">“{legacyTab}”</strong> (partidas em colunas, 3 por mês) e grava cada
           partida como uma linha na aba de resultados. Partidas já existentes no mesmo mês/número são ignoradas — pode rodar
-          mais de uma vez sem duplicar. Flush e Full House mesma cor entram como 0, pois não existiam na planilha antiga.
+          mais de uma vez sem duplicar.
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">

@@ -35,9 +35,7 @@ export type CategoryId =
   | "doisPares"
   | "trinca"
   | "sequencia"
-  | "flush"
   | "fullHouse"
-  | "fullHouseCor"
   | "quadra"
   | "yarborough"
   | "kismet";
@@ -61,12 +59,10 @@ export const CATEGORIES: Category[] = [
   { id: "quatro", label: "Quatro", short: "4", hint: "4 por dado", section: "upper", rule: { kind: "multiple", face: 4 } },
   { id: "cinco", label: "Cinco", short: "5", hint: "5 por dado", section: "upper", rule: { kind: "multiple", face: 5 } },
   { id: "seis", label: "Seis", short: "6", hint: "6 por dado", section: "upper", rule: { kind: "multiple", face: 6 } },
-  { id: "doisPares", label: "Dois pares mesma cor", short: "2P", hint: "soma dos dados", section: "lower", rule: { kind: "range", min: DICE_MIN, max: DICE_MAX } },
+  { id: "doisPares", label: "Dois pares", short: "2P", hint: "soma dos dados", section: "lower", rule: { kind: "range", min: DICE_MIN, max: DICE_MAX } },
   { id: "trinca", label: "Trinca", short: "3x", hint: "soma dos dados", section: "lower", rule: { kind: "range", min: DICE_MIN, max: DICE_MAX } },
   { id: "sequencia", label: "Sequência", short: "SQ", hint: "30 pontos", section: "lower", rule: { kind: "fixed", value: 30 } },
-  { id: "flush", label: "Flush", short: "FL", hint: "35 pontos", section: "lower", rule: { kind: "fixed", value: 35 } },
   { id: "fullHouse", label: "Full House", short: "FH", hint: "soma + 15", section: "lower", rule: { kind: "range", min: DICE_MIN + 15, max: DICE_MAX + 15 } },
-  { id: "fullHouseCor", label: "Full House mesma cor", short: "FC", hint: "soma + 20", section: "lower", rule: { kind: "range", min: DICE_MIN + 20, max: DICE_MAX + 20 } },
   { id: "quadra", label: "Quadra", short: "4x", hint: "soma + 35", section: "lower", rule: { kind: "range", min: DICE_MIN + 35, max: DICE_MAX + 35 } },
   { id: "yarborough", label: "Yarborough", short: "YB", hint: "soma dos dados", section: "lower", rule: { kind: "range", min: DICE_MIN, max: DICE_MAX } },
   { id: "kismet", label: "Kismet", short: "K!", hint: "soma + 50", section: "lower", rule: { kind: "range", min: DICE_MIN + 50, max: DICE_MAX + 50 } },

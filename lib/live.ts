@@ -11,6 +11,7 @@ import {
   updateValues,
 } from "./google-sheets";
 import { CATEGORIES, PLAYER_NAME, validateScore, type CategoryId, type PlayerId } from "./kismet";
+import { writeLegacyPlay } from "./legacy-sheet";
 import { nextTurn, scoresFromPlays, type LiveEntry, type LiveMeta, type LiveState, type Play } from "./turns";
 
 export type { LiveEntry, LiveMeta, LiveState, Play } from "./turns";
@@ -184,7 +185,17 @@ export async function saveLivePlay(player: PlayerId, cat: CategoryId, value: num
   const err = validateScore(category, value);
   if (err) throw new Error(`${category.label}: ${err}`);
   await writeRow(metaOf(state), player, [...plays, { cat, value, at: new Date().toISOString() }]);
+  await mirror(() => writeLegacyPlay(state, player, cat, value));
   return getLiveState(true);
+}
+
+/** Espelha na aba antiga sem derrubar a jogada se o espelho falhar (fica registrado no log). */
+async function mirror(fn: () => Promise<void>) {
+  try {
+    await fn();
+  } catch (e) {
+    console.error("[kismet] falha ao escrever na aba Nucha & Manoel:", e);
+  }
 }
 
 /** Desfaz a última jogada do jogador — só se ninguém jogou depois dela. */
@@ -200,5 +211,6 @@ export async function undoLivePlay(player: PlayerId) {
     throw new Error(`${PLAYER_NAME[other]} já jogou depois — não dá mais para desfazer.`);
   }
   await writeRow(metaOf(state), player, mine.slice(0, -1));
+  await mirror(() => writeLegacyPlay(state, player, last.cat, null));
   return getLiveState(true);
 }

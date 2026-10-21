@@ -15,6 +15,7 @@ import {
 } from "@/lib/kismet";
 import { clearLive, getLiveState, saveLivePlay, startLive, undoLivePlay, type LiveState } from "@/lib/live";
 import { buildMatch, matchId, nextRound } from "@/lib/match";
+import { clearLegacyRound, writeLegacyRound } from "@/lib/legacy-sheet";
 import { MATCHES_TAG, MatchConflictError, getMatchesFresh, importLegacy, saveMatch } from "@/lib/matches";
 
 const isPlayer = (v: unknown): v is PlayerId => v === "manoel" || v === "ana";
@@ -169,6 +170,10 @@ async function finalizeCurrent(live: LiveState): Promise<FinalizeResult> {
 
   try {
     await saveMatch(match, live.overwrite);
+    // garante a coluna completa na aba "Nucha & Manoel" (cada jogada já foi escrita na hora)
+    await writeLegacyRound(live, { manoel: m.scores, ana: a.scores }).catch((e) =>
+      console.error("[kismet] falha ao regravar a rodada na aba antiga:", e),
+    );
     await clearLive();
     refreshPages();
     return {
@@ -198,7 +203,12 @@ export async function finalizeLiveAction(): Promise<FinalizeResult> {
 export async function cancelLiveAction(): Promise<LiveResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  const live = await getLiveState(true);
+  if (live) {
+    await clearLegacyRound(live).catch((e) => console.error("[kismet] falha ao limpar a rodada na aba antiga:", e));
+  }
   await clearLive();
+  refreshPages();
   return { ok: true, state: null };
 }
 
