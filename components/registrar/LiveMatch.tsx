@@ -36,6 +36,7 @@ import {
 import { TOTAL_ROUNDS, otherPlayer, timeline, type LiveScores, type LiveState, type Play } from "@/lib/turns";
 import { roundOf } from "@/lib/match";
 import type { TakenSlot } from "./MatchForm";
+import { KismetCelebration, type KismetEvent } from "./KismetCelebration";
 
 const PLAYERS: PlayerId[] = ["manoel", "ana"];
 const POLL_MS = 3000;
@@ -494,16 +495,43 @@ function ScoreSheet({
 
 type FeedItem = Play & { player: PlayerId; round: number };
 
-export function LiveMatch({
-  me,
-  initialState,
-  upcoming,
-  sheetsReady,
-}: {
+type LiveMatchProps = {
   me: PlayerId;
   initialState: LiveState | null;
   upcoming: Upcoming;
   sheetsReady: boolean;
+};
+
+/** Partida ao vivo + comemoração de Kismet (fica por cima de qualquer tela, inclusive o resultado). */
+export function LiveMatch(props: LiveMatchProps) {
+  const [kismet, setKismet] = useState<KismetEvent | null>(null);
+  const seq = useRef(0);
+  const celebrate = useCallback(
+    (player: PlayerId, value: number) => {
+      const face = (value - 50) / 5;
+      if (!Number.isInteger(face) || face < 1 || face > 6) return;
+      seq.current += 1;
+      setKismet({ id: seq.current, face, value, name: PLAYER_NAME[player], mine: player === props.me });
+    },
+    [props.me],
+  );
+  const close = useCallback(() => setKismet(null), []);
+  return (
+    <>
+      <LiveMatchInner {...props} onKismet={celebrate} />
+      <KismetCelebration event={kismet} onClose={close} />
+    </>
+  );
+}
+
+function LiveMatchInner({
+  me,
+  initialState,
+  upcoming,
+  sheetsReady,
+  onKismet,
+}: LiveMatchProps & {
+  onKismet: (player: PlayerId, value: number) => void;
 }) {
   const router = useRouter();
   const other = otherPlayer(me);
@@ -564,14 +592,15 @@ export function LiveMatch({
           const last = plays.at(-1)!;
           flashCell(other, last.cat);
           notify("info", `${PLAYER_NAME[other]} marcou ${catOf(last.cat).label}: ${last.value === 0 ? "riscou ✕" : last.value}`);
-          if (state.turn === me) navigator.vibrate?.([40, 60, 40]);
+          if (last.cat === "kismet" && last.value > 0) onKismet(other, last.value);
+          else if (state.turn === me) navigator.vibrate?.([40, 60, 40]);
         }
         seen.current = plays.length;
       }
       liveKey.current = state?.key ?? null;
       setLive(state);
     },
-    [me, other, notify, flashCell, router],
+    [me, other, notify, flashCell, router, onKismet],
   );
 
   /* polling */
@@ -801,6 +830,7 @@ export function LiveMatch({
             round={myPlays.length + 1}
             otherDone={otherPlays.length >= TOTAL_ROUNDS}
             onSaved={(r, play) => {
+              if (play.cat === "kismet" && play.value > 0) onKismet(me, play.value);
               if (r.finished) {
                 // última jogada: a partida já foi gravada no servidor
                 finishing.current = true;

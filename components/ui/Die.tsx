@@ -20,7 +20,7 @@ const LAYOUT: Record<number, number[]> = {
 };
 
 // frente, direita, trás, esquerda, topo, base — faces opostas somam 7
-const FACES = [1, 3, 6, 4, 2, 5];
+export const FACES = [1, 3, 6, 4, 2, 5];
 
 export function Pips({ value }: { value: number }) {
   return (
