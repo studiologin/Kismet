@@ -5,9 +5,10 @@ com cartela de registro integrada à planilha **KISMET RESULTADOS** (Google Shee
 
 - **Landing pública** (`/`): placar geral e líder, mês corrente (x/3), duelo de estatísticas,
   evolução mensal em gráfico, histórico mês a mês com acumulado e últimas partidas.
-- **Partida ao vivo** (`/registrar`): perfis Manoel e Ana, cada um com PIN próprio. Cada jogador
-  preenche a própria coluna no celular e vê a do outro em tempo real (sincronização a cada 3 s via
-  aba `AoVivo` da planilha). Cálculo automático de bônus, totais e vencedor; bloqueio da 4ª partida
+- **Partida ao vivo por turnos** (`/registrar`): perfis Manoel e Ana, cada um com PIN próprio.
+  As jogadas são intercaladas: na sua vez você escolhe a categoria, marca os pontos e salva a
+  jogada — a vez passa para o outro, que vê a jogada em até 3 s (aba `AoVivo` da planilha).
+  Dá para desfazer a última jogada enquanto o outro não jogou. Cálculo automático de bônus, totais e vencedor; bloqueio da 4ª partida
   do mês (com opção de sobrescrever); finalizar grava na aba `Partidas`.
 - **Lançamento manual** (`/registrar/manual`): as duas colunas de uma vez, para correções.
 - **App instalável (PWA)**: manifesto, ícones, service worker com página offline, navegação

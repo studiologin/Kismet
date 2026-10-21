@@ -24,8 +24,9 @@ export function LiveBanner() {
           </span>
           Ao vivo
         </span>
-        <span className="text-xs text-fog">
+        <span className="truncate text-xs text-fog">
           {live.number}ª · {MONTHS[live.month - 1]}
+          {live.turn && <> · vez de {live.turn === "manoel" ? "Manoel" : "Ana"}</>}
         </span>
         <span className="font-display text-lg font-extrabold tabular">
           <span className="text-manoel">{t("manoel")}</span>

@@ -10,42 +10,22 @@ import {
   tabRef,
   updateValues,
 } from "./google-sheets";
-import { CATEGORIES, type CategoryId, type PlayerId } from "./kismet";
+import { CATEGORIES, PLAYER_NAME, validateScore, type CategoryId, type PlayerId } from "./kismet";
+import { nextTurn, scoresFromPlays, type LiveEntry, type LiveMeta, type LiveState, type Play } from "./turns";
+
+export type { LiveEntry, LiveMeta, LiveState, Play } from "./turns";
 
 /**
- * Partida ao vivo: cada jogador preenche a própria coluna no celular e o outro
- * acompanha em tempo real. O estado fica numa aba "AoVivo" da planilha, com no
- * máximo uma linha por jogador — cada um só escreve a sua linha, então não há
- * conflito de edição. Ao finalizar, a partida vai para a aba Partidas e a aba
- * AoVivo é limpa.
+ * Partida ao vivo por turnos. Cada jogada (uma categoria por vez) é salva na
+ * hora e a vez passa para o outro jogador. O estado fica numa aba "AoVivo" da
+ * planilha, com uma linha por jogador — cada um só escreve a própria linha.
+ * Ao finalizar, a partida vai para a aba Partidas e a AoVivo é limpa.
  *
  * Sem Google configurado (desenvolvimento/demonstração), usa memória do servidor.
  */
 
-export type LiveScores = Partial<Record<CategoryId, number | null>>;
-
-export interface LiveMeta {
-  key: string; // 2026-10-P1
-  date: string; // ISO
-  year: number;
-  month: number;
-  number: number;
-  overwrite: boolean;
-  startedBy: PlayerId;
-}
-
-export interface LiveEntry {
-  scores: LiveScores;
-  updatedAt: string; // ISO
-}
-
-export interface LiveState extends LiveMeta {
-  entries: Partial<Record<PlayerId, LiveEntry>>;
-}
-
-const HEADER = ["Chave", "Dados da partida", "Jogador", "Pontuação", "Atualizado em"];
-
-/* ───────────── armazenamento ───────────── */
+const HEADER = ["Chave", "Dados da partida", "Jogador", "Pontuação", "Atualizado em", "Jogadas"];
+const RANGE_ROWS = "A2:F10";
 
 interface Row {
   meta: LiveMeta;
@@ -56,14 +36,18 @@ interface Row {
 
 const memory: { rows: Row[] } = { rows: [] };
 
-function cleanScores(input: unknown): LiveScores {
-  const out: LiveScores = {};
-  if (!input || typeof input !== "object") return out;
-  for (const c of CATEGORIES) {
-    const v = (input as Record<string, unknown>)[c.id];
-    if (v === null || v === undefined || v === "") continue;
-    const n = Number(v);
-    if (Number.isFinite(n)) out[c.id] = Math.trunc(n);
+const CAT_IDS = new Set<string>(CATEGORIES.map((c) => c.id));
+
+function parsePlays(raw: unknown): Play[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Play[] = [];
+  for (const p of raw) {
+    if (!p || typeof p !== "object") continue;
+    const { cat, value, at } = p as Record<string, unknown>;
+    if (typeof cat !== "string" || !CAT_IDS.has(cat)) continue;
+    const n = Number(value);
+    if (!Number.isFinite(n)) continue;
+    out.push({ cat: cat as CategoryId, value: Math.trunc(n), at: String(at ?? "") });
   }
   return out;
 }
@@ -71,10 +55,8 @@ function cleanScores(input: unknown): LiveScores {
 async function ensureLiveTab() {
   const { liveTab } = sheetsConfig();
   const tabs = await listTabs();
-  if (!tabs.includes(liveTab)) {
-    await addTab(liveTab);
-    await updateValues(`${tabRef(liveTab)}!A1:E1`, [HEADER]);
-  }
+  if (!tabs.includes(liveTab)) await addTab(liveTab);
+  await updateValues(`${tabRef(liveTab)}!A1:F1`, [HEADER]);
 }
 
 async function readRows(): Promise<Row[]> {
@@ -82,9 +64,8 @@ async function readRows(): Promise<Row[]> {
   const { liveTab } = sheetsConfig();
   let values: unknown[][] = [];
   try {
-    values = await getValues(`${tabRef(liveTab)}!A2:E10`);
+    values = await getValues(`${tabRef(liveTab)}!${RANGE_ROWS}`);
   } catch (e) {
-    // aba ainda não existe → nenhuma partida em andamento
     if (e instanceof Error && /Unable to parse range|not found/i.test(e.message)) return [];
     throw e;
   }
@@ -94,10 +75,11 @@ async function readRows(): Promise<Row[]> {
       const player = String(r[2] ?? "") as PlayerId;
       if (player !== "manoel" && player !== "ana") return;
       const meta = JSON.parse(String(r[1] ?? "")) as LiveMeta;
+      const plays = parsePlays(JSON.parse(String(r[5] || "[]")));
       rows.push({
         meta,
         player,
-        entry: { scores: cleanScores(JSON.parse(String(r[3] ?? "{}"))), updatedAt: String(r[4] ?? "") },
+        entry: { plays, scores: scoresFromPlays(plays), updatedAt: String(r[4] ?? "") },
         rowNumber: i + 2,
       });
     } catch {
@@ -109,15 +91,16 @@ async function readRows(): Promise<Row[]> {
 
 function toState(rows: Row[]): LiveState | null {
   if (!rows.length) return null;
-  // a partida ativa é a da linha mais antiga (quem iniciou); linhas de outra chave são descartadas
   const meta = rows[0].meta;
   const entries: LiveState["entries"] = {};
   for (const r of rows) if (r.meta.key === meta.key) entries[r.player] = r.entry;
-  return { ...meta, entries };
+  const state: LiveState = { ...meta, firstPlayer: meta.firstPlayer ?? meta.startedBy, entries, turn: null };
+  state.turn = nextTurn(state);
+  return state;
 }
 
-/* cache curtíssimo em memória: dois celulares consultando a cada poucos segundos
-   não estouram a cota da API do Google (60 leituras/min por conta). */
+/* cache curtíssimo: dois celulares consultando a cada poucos segundos não
+   estouram a cota da API do Google (60 leituras/min por conta). */
 let memo: { at: number; state: LiveState | null } | null = null;
 const MEMO_MS = 2000;
 
@@ -128,8 +111,10 @@ export async function getLiveState(fresh = false): Promise<LiveState | null> {
   return state;
 }
 
-async function writeRow(meta: LiveMeta, player: PlayerId, entry: LiveEntry) {
+async function writeRow(meta: LiveMeta, player: PlayerId, plays: Play[]) {
   memo = null;
+  const updatedAt = new Date().toISOString();
+  const entry: LiveEntry = { plays, scores: scoresFromPlays(plays), updatedAt };
   if (!isSheetsConfigured()) {
     const i = memory.rows.findIndex((r) => r.player === player);
     const row = { meta, player, entry };
@@ -138,14 +123,14 @@ async function writeRow(meta: LiveMeta, player: PlayerId, entry: LiveEntry) {
     return;
   }
   const { liveTab } = sheetsConfig();
-  await ensureLiveTab();
   const rows = await readRows();
   const existing = rows.find((r) => r.player === player);
-  const values = [[meta.key, JSON.stringify(meta), player, JSON.stringify(entry.scores), entry.updatedAt]];
+  const values = [[meta.key, JSON.stringify(meta), player, JSON.stringify(entry.scores), updatedAt, JSON.stringify(plays)]];
   if (existing?.rowNumber) {
-    await updateValues(`${tabRef(liveTab)}!A${existing.rowNumber}:E${existing.rowNumber}`, values);
+    await updateValues(`${tabRef(liveTab)}!A${existing.rowNumber}:F${existing.rowNumber}`, values);
   } else {
-    await appendValues(`${tabRef(liveTab)}!A:E`, values);
+    if (!rows.length) await ensureLiveTab();
+    await appendValues(`${tabRef(liveTab)}!A:F`, values);
   }
 }
 
@@ -157,36 +142,63 @@ export async function clearLive() {
   }
   const { liveTab } = sheetsConfig();
   try {
-    await clearValues(`${tabRef(liveTab)}!A2:E10`);
+    await clearValues(`${tabRef(liveTab)}!${RANGE_ROWS}`);
   } catch {
     /* aba inexistente: nada a limpar */
   }
 }
+
+const metaOf = (s: LiveState): LiveMeta => ({
+  key: s.key,
+  date: s.date,
+  year: s.year,
+  month: s.month,
+  number: s.number,
+  overwrite: s.overwrite,
+  startedBy: s.startedBy,
+  firstPlayer: s.firstPlayer,
+});
 
 /* ───────────── operações ───────────── */
 
 export async function startLive(meta: LiveMeta) {
   const current = await getLiveState(true);
   if (current && current.key !== meta.key) {
-    throw new Error(`Já existe uma partida em andamento (partida ${current.number} de ${current.month}/${current.year}).`);
+    throw new Error(`Já existe uma partida em andamento (${current.number}ª de ${current.month}/${current.year}).`);
   }
   if (current) return current; // mesma partida: só entra nela
-  await writeRow(meta, meta.startedBy, { scores: {}, updatedAt: new Date().toISOString() });
+  await writeRow(meta, meta.startedBy, []);
   return getLiveState(true);
 }
 
-export async function saveLiveScores(player: PlayerId, scores: unknown) {
-  const current = await getLiveState(true);
-  if (!current) throw new Error("Nenhuma partida em andamento.");
-  const meta: LiveMeta = {
-    key: current.key,
-    date: current.date,
-    year: current.year,
-    month: current.month,
-    number: current.number,
-    overwrite: current.overwrite,
-    startedBy: current.startedBy,
-  };
-  await writeRow(meta, player, { scores: cleanScores(scores), updatedAt: new Date().toISOString() });
+/** Salva UMA jogada do jogador (uma categoria) e passa a vez. */
+export async function saveLivePlay(player: PlayerId, cat: CategoryId, value: number) {
+  const state = await getLiveState(true);
+  if (!state) throw new Error("Nenhuma partida em andamento.");
+  const category = CATEGORIES.find((c) => c.id === cat);
+  if (!category) throw new Error("Categoria inválida.");
+  if (state.turn === null) throw new Error("As duas cartelas já estão completas.");
+  if (state.turn !== player) throw new Error(`Agora é a vez de ${PLAYER_NAME[state.turn]}.`);
+  const plays = state.entries[player]?.plays ?? [];
+  if (plays.some((p) => p.cat === cat)) throw new Error(`${category.label} já foi marcado.`);
+  const err = validateScore(category, value);
+  if (err) throw new Error(`${category.label}: ${err}`);
+  await writeRow(metaOf(state), player, [...plays, { cat, value, at: new Date().toISOString() }]);
+  return getLiveState(true);
+}
+
+/** Desfaz a última jogada do jogador — só se ninguém jogou depois dela. */
+export async function undoLivePlay(player: PlayerId) {
+  const state = await getLiveState(true);
+  if (!state) throw new Error("Nenhuma partida em andamento.");
+  const mine = state.entries[player]?.plays ?? [];
+  const last = mine.at(-1);
+  if (!last) throw new Error("Você ainda não marcou nenhuma jogada.");
+  const other: PlayerId = player === "manoel" ? "ana" : "manoel";
+  const otherLast = state.entries[other]?.plays.at(-1);
+  if (otherLast && otherLast.at > last.at) {
+    throw new Error(`${PLAYER_NAME[other]} já jogou depois — não dá mais para desfazer.`);
+  }
+  await writeRow(metaOf(state), player, mine.slice(0, -1));
   return getLiveState(true);
 }

@@ -136,12 +136,15 @@ Dois pares mesma cor…Kismet, Total Inferior, Total] · [Ana: idem] · Vencedor
 
 - **Perfis:** em `/registrar` cada um escolhe *Manoel* ou *Ana* e digita o próprio PIN. O celular fica
   logado por 90 dias.
-- **Ao vivo:** quem começa escolhe data e nº da partida; o outro abre o app e entra na mesma partida.
-  Cada um preenche **só a própria coluna** — ela é salva sozinha (≈1 s depois de digitar) e aparece no
-  celular do outro em até 3 segundos, com destaque no que acabou de mudar.
-- **Finalizar:** quando as duas cartelas estão completas e válidas, qualquer um toca em *Finalizar* →
+- **Ao vivo, por turnos:** quem cria a partida escolhe data, nº da partida e **quem começa**. O outro
+  abre o app e entra na mesma partida. As jogadas são intercaladas, como no jogo de verdade: na sua
+  vez, você escolhe a categoria, marca os pontos (botões rápidos por nº de dados, "fez/riscar" ou o
+  valor) e toca em **Salvar jogada** — ela é gravada na hora e a vez passa para o outro, que recebe
+  um aviso com o que você marcou (em até 3 segundos).
+- **Desfazer:** errou? Enquanto o outro ainda não jogou, toque em *Desfazer* e a vez volta para você.
+- **Finalizar:** depois das 15 rodadas de cada um, aparece *Gravar resultado* nos dois celulares →
   a partida vai para a aba **Partidas** e o placar se atualiza.
-- A aba **AoVivo** da planilha guarda a partida em andamento (uma linha por jogador) e é limpa ao
+- A aba **AoVivo** da planilha guarda a partida em andamento (uma linha por jogador, com todas as jogadas em ordem) e é limpa ao
   finalizar ou cancelar. Não edite essa aba à mão durante o jogo.
 - **Lançamento manual** (`/registrar/manual`): preenche as duas colunas de uma vez — para correções.
 - **Instalar no celular:**

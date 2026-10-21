@@ -13,7 +13,7 @@ import {
   type PlayerId,
   type Scores,
 } from "@/lib/kismet";
-import { clearLive, getLiveState, saveLiveScores, startLive, type LiveState } from "@/lib/live";
+import { clearLive, getLiveState, saveLivePlay, startLive, undoLivePlay, type LiveState } from "@/lib/live";
 import { buildMatch, matchId } from "@/lib/match";
 import { MATCHES_TAG, MatchConflictError, getMatchesFresh, importLegacy, saveMatch } from "@/lib/matches";
 
@@ -84,6 +84,7 @@ export async function startLiveAction(input: {
   month: number;
   number: number;
   overwrite: boolean;
+  firstPlayer: PlayerId;
 }): Promise<LiveResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
@@ -108,6 +109,7 @@ export async function startLiveAction(input: {
       number: input.number,
       overwrite: Boolean(input.overwrite),
       startedBy: session.player,
+      firstPlayer: isPlayer(input.firstPlayer) ? input.firstPlayer : session.player,
     });
     return { ok: true, state };
   } catch (e) {
@@ -115,15 +117,28 @@ export async function startLiveAction(input: {
   }
 }
 
-/** Grava a coluna do jogador logado (cada um só altera a própria pontuação). */
-export async function saveMyScoresAction(scores: Partial<Record<string, number | null>>): Promise<LiveResult> {
+/** Salva UMA jogada do jogador logado (uma categoria) e passa a vez. */
+export async function playAction(cat: string, value: number): Promise<LiveResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  if (!CATEGORIES.some((c) => c.id === cat)) return { ok: false, error: "Categoria inválida." };
+  try {
+    const state = await saveLivePlay(session.player, cat as (typeof CATEGORIES)[number]["id"], Number(value));
+    return { ok: true, state };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao salvar a jogada." };
+  }
+}
+
+/** Desfaz a última jogada do jogador logado (se o outro ainda não jogou depois). */
+export async function undoPlayAction(): Promise<LiveResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
   try {
-    const state = await saveLiveScores(session.player, scores);
+    const state = await undoLivePlay(session.player);
     return { ok: true, state };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Falha ao sincronizar." };
+    return { ok: false, error: e instanceof Error ? e.message : "Não foi possível desfazer." };
   }
 }
 
