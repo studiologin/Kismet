@@ -18,7 +18,7 @@ export default async function RegistrarPage() {
   const session = await getSession();
   if (!session) return <PinGate configured={isPinConfigured()} />;
 
-  const [{ matches, source }, live] = await Promise.all([getMatches(), getLiveState(true).catch(() => null)]);
+  const [{ matches, source }, live] = await Promise.all([getMatches({ fresh: true }), getLiveState(true).catch(() => null)]);
   const now = nowInSaoPaulo();
   const list = source === "demo" ? [] : matches;
   const next = nextRound(list, now.year);

@@ -16,11 +16,12 @@ import {
 import { clearLive, getLiveState, saveLivePlay, startLive, undoLivePlay, type LiveState } from "@/lib/live";
 import { buildMatch, matchId, nextRound } from "@/lib/match";
 import { clearLegacyRound, writeLegacyRound } from "@/lib/legacy-sheet";
-import { MATCHES_TAG, MatchConflictError, getMatchesFresh, importLegacy, saveMatch } from "@/lib/matches";
+import { MATCHES_TAG, MatchConflictError, getMatchesFresh, importLegacy, invalidateMatches, saveMatch } from "@/lib/matches";
 
 const isPlayer = (v: unknown): v is PlayerId => v === "manoel" || v === "ana";
 
 function refreshPages() {
+  invalidateMatches();
   updateTag(MATCHES_TAG);
   revalidatePath("/");
   revalidatePath("/registrar");

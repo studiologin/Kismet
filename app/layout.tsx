@@ -49,6 +49,9 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
+/** Sempre lê a planilha na hora (sem páginas estáticas com dados antigos). */
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // carimbo dos dados exibidos nesta página (o aviso de "novos resultados" compara com o servidor)
   const { matches, source } = await getMatches();

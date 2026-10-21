@@ -17,7 +17,7 @@ import { getMatches } from "@/lib/matches";
 import { computeStats } from "@/lib/stats";
 
 // ISR: a página é regenerada a cada 5 min e imediatamente após cada registro.
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const { matches, source, error } = await getMatches();

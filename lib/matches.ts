@@ -1,5 +1,4 @@
 import "server-only";
-import { unstable_cache } from "next/cache";
 import { DEMO_MATCHES } from "./demo-data";
 import {
   addTab,
@@ -87,46 +86,69 @@ async function readPartidas(): Promise<Match[]> {
 }
 
 
-/** Partidas da aba antiga ("Nucha & Manoel"). Se a aba não existir, devolve vazio. */
-async function readLegacy(): Promise<Match[]> {
+/** Partidas da tabela "Nucha & Manoel". `null` = aba indisponível (aí vale a aba Partidas). */
+async function readLegacy(): Promise<Match[] | null> {
   const { legacyTab } = sheetsConfig();
-  if (!legacyTab) return [];
+  if (!legacyTab) return null;
   try {
     const grid = await getValues(`${tabRef(legacyTab)}!A1:ZZ23`);
-    return grid.length ? parseLegacyGrid(grid, legacyYear()) : [];
+    return grid.length ? parseLegacyGrid(grid, legacyYear()) : null;
   } catch (e) {
     console.warn("[kismet] aba antiga indisponível:", e instanceof Error ? e.message : e);
-    return [];
+    return null;
   }
 }
 
 const slot = (m: Match) => `${m.year}-${m.month}-${m.number}`;
 
 /**
- * Junta as duas fontes: a aba de partidas tem prioridade; partidas da aba antiga
- * entram apenas nos meses/números que ainda não existem na aba nova.
+ * A tabela "Nucha & Manoel" é a fonte da verdade do ano dela: o que está lá é o
+ * que o site mostra (se uma coluna for apagada ou corrigida na planilha, o site
+ * acompanha). A aba Partidas só vale para outros anos ou se a tabela não puder
+ * ser lida.
  */
 async function readFromSheets(): Promise<Match[]> {
   const [partidas, legacy, live] = await Promise.all([
     readPartidas(),
     readLegacy(),
-    getLiveState().catch(() => null),
+    getLiveState(true).catch(() => null),
   ]);
-  const taken = new Set(partidas.map(slot));
-  // a rodada em andamento já tem jogadas escritas na aba antiga, mas ainda não terminou
-  if (live) taken.add(`${live.year}-${live.month}-${live.number}`);
-  return sortMatches([...partidas, ...legacy.filter((m) => !taken.has(slot(m)))]);
+  if (!legacy) return partidas;
+  const year = legacyYear();
+  // a rodada em andamento já tem jogadas escritas na tabela, mas ainda não terminou
+  const liveSlot = live ? `${live.year}-${live.month}-${live.number}` : null;
+  return sortMatches([
+    ...partidas.filter((m) => m.year !== year),
+    ...legacy.filter((m) => slot(m) !== liveSlot),
+  ]);
 }
 
-const readCached = unstable_cache(readFromSheets, ["kismet-matches-v2"], {
-  tags: [MATCHES_TAG],
-  revalidate: 300,
-});
+/*
+ * Sem cache de páginas: cada visita lê a planilha, então o que foi editado à mão
+ * aparece na hora. Um memo de poucos segundos (por instância) só evita ler várias
+ * vezes na mesma visita (layout + página) e protege a cota da API do Google.
+ */
+const MEMO_MS = 5000;
+let memo: { at: number; data: Promise<Match[]> } | null = null;
 
-export async function getMatches(): Promise<MatchesResult> {
+function readCached(): Promise<Match[]> {
+  if (memo && Date.now() - memo.at < MEMO_MS) return memo.data;
+  const data = readFromSheets();
+  memo = { at: Date.now(), data };
+  data.catch(() => (memo = null));
+  return data;
+}
+
+/** Descarta a leitura em memória (depois de gravar). */
+export function invalidateMatches() {
+  memo = null;
+}
+
+/** `fresh`: lê a planilha agora, sem cache (tela de partida — a próxima rodada precisa ser a real). */
+export async function getMatches(opts: { fresh?: boolean } = {}): Promise<MatchesResult> {
   if (!isSheetsConfigured()) return { matches: sortMatches(DEMO_MATCHES), source: "demo" };
   try {
-    return { matches: await readCached(), source: "sheets" };
+    return { matches: await (opts.fresh ? readFromSheets() : readCached()), source: "sheets" };
   } catch (e) {
     console.error("[kismet] erro lendo planilha:", e);
     return { matches: [], source: "error", error: e instanceof Error ? e.message : String(e) };
@@ -156,23 +178,21 @@ export async function saveMatch(match: Match, overwrite: boolean): Promise<"crea
   );
   const monthCount = all.filter((m) => m.year === match.year && m.month === match.month).length;
 
-  if (sameSlot) {
-    if (!overwrite) {
-      throw new MatchConflictError(`A partida ${match.number} deste mês já foi registrada.`, sameSlot);
-    }
-    // partida vinda da aba antiga: grava na aba nova, que passa a ter prioridade
-    if (!sameSlot.row) {
-      await appendValues(`${tabRef(tab)}!A:${LAST_COL}`, [matchToRow(match)]);
-      return "updated";
-    }
-    await updateValues(`${tabRef(tab)}!A${sameSlot.row}:${LAST_COL}${sameSlot.row}`, [matchToRow(match)]);
-    return "updated";
+  if (sameSlot && !overwrite) {
+    throw new MatchConflictError(`A partida ${match.number} deste mês já foi registrada.`, sameSlot);
   }
-  if (monthCount >= MATCHES_PER_MONTH) {
+  if (!sameSlot && monthCount >= MATCHES_PER_MONTH) {
     throw new Error(`Este mês já tem ${MATCHES_PER_MONTH} partidas.`);
   }
-  await appendValues(`${tabRef(tab)}!A:${LAST_COL}`, [matchToRow(match)]);
-  return "created";
+  // na aba Partidas, a linha da mesma rodada (mesmo que antiga/ignorada) é substituída — nunca duplica
+  const row = (await readPartidas()).find((m) => slot(m) === slot(match))?.row;
+  if (row) {
+    await updateValues(`${tabRef(tab)}!A${row}:${LAST_COL}${row}`, [matchToRow(match)]);
+  } else {
+    await appendValues(`${tabRef(tab)}!A:${LAST_COL}`, [matchToRow(match)]);
+  }
+  invalidateMatches();
+  return sameSlot ? "updated" : "created";
 }
 
 /** Importa a aba antiga ("Nucha & Manoel") para a aba de partidas, sem duplicar. */
