@@ -76,7 +76,18 @@ function validateCard(player: PlayerId, raw: Partial<Record<string, number | nul
 
 /* ───────────── partida ao vivo ───────────── */
 
-export type LiveResult = { ok: true; state: LiveState | null } | { ok: false; error: string; conflict?: boolean };
+export type MatchSummary = { id: string; manoel: number; ana: number; winner: string };
+
+export type LiveResult =
+  | {
+      ok: true;
+      state: LiveState | null;
+      /** preenchido quando a jogada completou as duas cartelas e a partida foi gravada */
+      finished?: MatchSummary;
+      /** a última jogada foi salva, mas a gravação automática falhou (dá para tentar de novo) */
+      finalizeError?: string;
+    }
+  | { ok: false; error: string; conflict?: boolean };
 
 /**
  * Inicia a PRÓXIMA partida do mês corrente — o jogador não escolhe data nem número:
@@ -118,6 +129,11 @@ export async function playAction(cat: string, value: number): Promise<LiveResult
   if (!CATEGORIES.some((c) => c.id === cat)) return { ok: false, error: "Categoria inválida." };
   try {
     const state = await saveLivePlay(session.player, cat as (typeof CATEGORIES)[number]["id"], Number(value));
+    // última jogada da partida → grava o resultado na hora, sem passo extra
+    if (state && state.turn === null) {
+      const f = await finalizeCurrent(state);
+      return f.ok ? { ok: true, state: null, finished: f.summary } : { ok: true, state, finalizeError: f.error };
+    }
     return { ok: true, state };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Falha ao salvar a jogada." };
@@ -136,18 +152,11 @@ export async function undoPlayAction(): Promise<LiveResult> {
   }
 }
 
-export type FinalizeResult =
-  | { ok: true; summary: { id: string; manoel: number; ana: number; winner: string } }
-  | { ok: false; error: string; fieldErrors?: string[] };
+export type FinalizeResult = { ok: true; summary: MatchSummary } | { ok: false; error: string; fieldErrors?: string[] };
 
-export async function finalizeLiveAction(): Promise<FinalizeResult> {
-  const session = await getSession();
-  if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
+/** Grava a partida ao vivo (completa) na aba Partidas e limpa a AoVivo. */
+async function finalizeCurrent(live: LiveState): Promise<FinalizeResult> {
   if (!isSheetsConfigured()) return { ok: false, error: "Google Sheets não configurado." };
-
-  const live = await getLiveState(true);
-  if (!live) return { ok: false, error: "Nenhuma partida em andamento." };
-
   const m = validateCard("manoel", live.entries.manoel?.scores);
   const a = validateCard("ana", live.entries.ana?.scores);
   const fieldErrors = [...m.errors, ...a.errors];
@@ -181,6 +190,15 @@ export async function finalizeLiveAction(): Promise<FinalizeResult> {
     if (e instanceof MatchConflictError) return { ok: false, error: e.message };
     return { ok: false, error: e instanceof Error ? e.message : "Erro ao gravar na planilha." };
   }
+}
+
+/** Reserva: grava manualmente se a gravação automática da última jogada falhou. */
+export async function finalizeLiveAction(): Promise<FinalizeResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  const live = await getLiveState(true);
+  if (!live) return { ok: false, error: "Nenhuma partida em andamento." };
+  return finalizeCurrent(live);
 }
 
 export async function cancelLiveAction(): Promise<LiveResult> {

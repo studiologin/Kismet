@@ -12,6 +12,7 @@ import {
   startLiveAction,
   undoPlayAction,
   type FinalizeResult,
+  type LiveResult,
 } from "@/app/registrar/actions";
 import { DieFace } from "@/components/ui/Die";
 import { MONTHS, formatDateBR } from "@/lib/dates";
@@ -46,13 +47,15 @@ function PlayComposer({
   me,
   scores,
   round,
+  otherDone,
   onSaved,
   onError,
 }: {
   me: PlayerId;
   scores: LiveScores;
   round: number;
-  onSaved: (s: LiveState | null, play: { cat: CategoryId; value: number }) => void;
+  otherDone: boolean;
+  onSaved: (r: Extract<LiveResult, { ok: true }>, play: { cat: CategoryId; value: number }) => void;
   onError: (msg: string) => void;
 }) {
   const [cat, setCat] = useState<CategoryId | null>(null);
@@ -69,6 +72,8 @@ function PlayComposer({
   const before = totalsOf(scores);
   const after = ready && cat ? totalsOf({ ...scores, [cat]: n! }) : null;
   const bonusGain = after ? after.bonus - before.bonus : 0;
+  // última jogada da partida inteira: o outro já completou e só falta esta categoria
+  const isLastPlay = remaining.length === 1 && otherDone;
 
   const choose = (id: CategoryId) => {
     setCat(id);
@@ -80,7 +85,7 @@ function PlayComposer({
       if (!cat || n === null) return;
       const r = await playAction(cat, n);
       if (r.ok) {
-        onSaved(r.state, { cat, value: n });
+        onSaved(r, { cat, value: n });
         setCat(null);
         setValue("");
       } else onError(r.error);
@@ -229,7 +234,13 @@ function PlayComposer({
             onClick={save}
             className="mt-4 min-h-14 w-full rounded-2xl bg-paper text-base font-extrabold text-ink transition active:scale-[.98] disabled:opacity-40"
           >
-            {pending ? "Salvando…" : ready ? `Salvar jogada · ${category.label} ${n === 0 ? "✕" : n}` : "Marque os pontos"}
+            {pending
+              ? isLastPlay
+                ? "Salvando e gravando a partida…"
+                : "Salvando…"
+              : ready
+                ? `${isLastPlay ? "Salvar e encerrar" : "Salvar jogada"} · ${category.label} ${n === 0 ? "✕" : n}`
+                : "Marque os pontos"}
           </button>
         </div>
       )}
@@ -452,6 +463,8 @@ export function LiveMatch({
   const liveKey = useRef(initialState?.key ?? null);
   const finishing = useRef(false);
   const seen = useRef<number>(initialState?.entries[other]?.plays.length ?? 0);
+  const lastLive = useRef<LiveState | null>(initialState);
+  const [endedSummary, setEndedSummary] = useState<{ manoel: number; ana: number; complete: boolean } | null>(null);
 
   const notify = useCallback((kind: "ok" | "error" | "info", text: string, list?: string[]) => setMessage({ kind, text, list }), []);
 
@@ -472,7 +485,20 @@ export function LiveMatch({
   /* aplica estado vindo do servidor */
   const applyServer = useCallback(
     (state: LiveState | null) => {
-      if (!state && liveKey.current && !finishing.current) setEndedByOther(true);
+      if (!state && liveKey.current && !finishing.current) {
+        const prev = lastLive.current;
+        if (prev) {
+          const tm = totalsOf(prev.entries.manoel?.scores).total;
+          const ta = totalsOf(prev.entries.ana?.scores).total;
+          const playsLeft =
+            2 * TOTAL_ROUNDS - (prev.entries.manoel?.plays.length ?? 0) - (prev.entries.ana?.plays.length ?? 0);
+          // a última jogada do outro também conta: se faltava só ela, a partida foi gravada
+          setEndedSummary({ manoel: tm, ana: ta, complete: playsLeft <= 1 });
+        }
+        setEndedByOther(true);
+        router.refresh();
+      }
+      lastLive.current = state;
       if (state && state.key !== liveKey.current) {
         seen.current = state.entries[other]?.plays.length ?? 0;
         setEndedByOther(false);
@@ -489,7 +515,7 @@ export function LiveMatch({
       liveKey.current = state?.key ?? null;
       setLive(state);
     },
-    [me, other, notify, flashCell],
+    [me, other, notify, flashCell, router],
   );
 
   /* polling */
@@ -599,9 +625,16 @@ export function LiveMatch({
     return (
       <div className="space-y-4">
         {endedByOther && (
-          <div className="glass rounded-2xl p-4 text-sm">
-            <p className="font-bold text-gold">A partida foi encerrada no outro celular.</p>
-            <Link href="/" className="mt-1 inline-block font-semibold text-paper underline underline-offset-4">
+          <div className="glass rounded-2xl p-5 text-center">
+            <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-gold">
+              {endedSummary?.complete ? "Partida encerrada e gravada" : "Partida encerrada no outro celular"}
+            </p>
+            {endedSummary?.complete && (
+              <p className="mt-2 text-sm text-fog">
+                {PLAYER_NAME[other]} fez a última jogada — o placar final está na planilha.
+              </p>
+            )}
+            <Link href="/" className="mt-3 inline-block font-semibold text-paper underline underline-offset-4">
               Ver o placar atualizado →
             </Link>
           </div>
@@ -682,6 +715,7 @@ export function LiveMatch({
       {done ? (
         <section className="glass rounded-[1.5rem] p-5 text-center ring-1 ring-gold/40">
           <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-gold">Cartelas completas</p>
+          <p className="mt-1 text-xs text-fog">A gravação automática não terminou — toque abaixo para gravar.</p>
           <p className="mt-2 font-display text-4xl font-extrabold tabular">
             <span className="text-manoel">{totals.manoel.total}</span>
             <span className="mx-2 text-mist">×</span>
@@ -693,7 +727,7 @@ export function LiveMatch({
             onClick={() => setConfirm("finalize")}
             className="mt-5 min-h-14 w-full rounded-2xl bg-gold text-base font-extrabold text-ink transition active:scale-[.98]"
           >
-            Gravar resultado
+            Gravar resultado agora
           </button>
           {canUndo && (
             <button type="button" disabled={pending} onClick={undo} className="mt-3 text-sm font-semibold text-mist disabled:opacity-50">
@@ -707,10 +741,21 @@ export function LiveMatch({
           me={me}
           scores={live.entries[me]?.scores ?? {}}
           round={myPlays.length + 1}
-          onSaved={(s, play) => {
-            applyServer(s);
+          otherDone={otherPlays.length >= TOTAL_ROUNDS}
+          onSaved={(r, play) => {
+            if (r.finished) {
+              // última jogada: a partida já foi gravada no servidor
+              finishing.current = true;
+              liveKey.current = null;
+              setLive(null);
+              setResult({ ok: true, summary: r.finished });
+              router.refresh();
+              return;
+            }
+            applyServer(r.state);
             flashCell(me, play.cat);
-            notify("ok", `Jogada salva · vez de ${PLAYER_NAME[other]}`);
+            if (r.finalizeError) notify("error", `Jogada salva, mas a partida não foi gravada: ${r.finalizeError}`);
+            else notify("ok", `Jogada salva · vez de ${PLAYER_NAME[other]}`);
           }}
           onError={(msg) => notify("error", msg)}
         />

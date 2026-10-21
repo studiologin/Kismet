@@ -143,8 +143,9 @@ Dois pares mesma cor…Kismet, Total Inferior, Total] · [Ana: idem] · Vencedor
   valor) e toca em **Salvar jogada** — ela é gravada na hora e a vez passa para o outro, que recebe
   um aviso com o que você marcou (em até 3 segundos).
 - **Desfazer:** errou? Enquanto o outro ainda não jogou, toque em *Desfazer* e a vez volta para você.
-- **Finalizar:** depois das 15 rodadas de cada um, aparece *Gravar resultado* nos dois celulares →
-  a partida vai para a aba **Partidas** e o placar se atualiza.
+- **Fim automático:** a última jogada da partida (botão *Salvar e encerrar*) já grava o resultado na
+  aba **Partidas**, limpa a **AoVivo** e atualiza o placar — os dois celulares mostram o encerramento.
+  Se a gravação falhar (ex.: sem internet), aparece *Gravar resultado agora* para tentar de novo.
 - A aba **AoVivo** da planilha guarda a partida em andamento (uma linha por jogador, com todas as jogadas em ordem) e é limpa ao
   finalizar ou cancelar. Não edite essa aba à mão durante o jogo.
 - **Lançamento manual** (`/registrar/manual`): preenche as duas colunas de uma vez — para correções.
