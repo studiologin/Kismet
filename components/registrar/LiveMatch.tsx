@@ -31,6 +31,7 @@ import {
   type PlayerId,
 } from "@/lib/kismet";
 import { TOTAL_ROUNDS, otherPlayer, timeline, type LiveScores, type LiveState, type Play } from "@/lib/turns";
+import { roundOf } from "@/lib/match";
 import type { TakenSlot } from "./MatchForm";
 
 const PLAYERS: PlayerId[] = ["manoel", "ana"];
@@ -124,7 +125,7 @@ function PlayComposer({
         <div>
           <p className={`text-xs font-extrabold uppercase tracking-[0.25em] ${nameColor(me)}`}>Sua vez</p>
           <p className="font-display text-2xl font-extrabold">
-            Rodada {round}
+            Jogada {round}
             <span className="text-mist">/{TOTAL_ROUNDS}</span>
           </p>
         </div>
@@ -253,43 +254,44 @@ function PlayComposer({
 export interface Upcoming {
   year: number;
   month: number;
-  date: string; // hoje (ISO)
-  number: number | null; // próxima partida livre do mês; null = mês completo
-  played: TakenSlot[]; // partidas já jogadas no mês
+  number: number; // 1ª, 2ª ou 3ª do mês
+  round: number; // rodada na sequência do ano (1–36)
+  date: string; // hoje (ISO) — data em que a partida é jogada
+  played: TakenSlot[]; // partidas já jogadas no mês da rodada
 }
 
 function StartPanel({ me, upcoming, onStarted }: { me: PlayerId; upcoming: Upcoming; onStarted: (s: LiveState | null) => void }) {
   const [first, setFirst] = useState<PlayerId>(me);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const { number, month, year, played } = upcoming;
-  const full = number === null;
+  const { number, month, year, round, played } = upcoming;
+  const firstRoundOfMonth = (month - 1) * MATCHES_PER_MONTH + 1;
 
   return (
     <section className="glass rounded-[1.75rem] p-5">
-      <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-gold">{full ? "Mês completo" : "Próxima partida"}</p>
-      <h2 className="mt-1 font-display text-3xl font-extrabold">
-        {full ? `${MONTHS[month - 1]} encerrado` : `${number}ª de ${MONTHS[month - 1]}`}
-      </h2>
+      <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-gold">Próxima rodada</p>
+      <h2 className="mt-1 font-display text-4xl font-extrabold leading-none">Rodada {round}</h2>
+      <p className="mt-2 font-display text-xl font-bold text-paper/90">
+        {number}ª de {MONTHS[month - 1]} <span className="text-mist">{year}</span>
+      </p>
       <p className="mt-1 text-sm text-fog">
-        {full
-          ? `As ${MATCHES_PER_MONTH} partidas de ${MONTHS[month - 1]} já foram jogadas. A próxima abre no mês que vem.`
-          : `${formatDateBR(upcoming.date, { withYear: true })} · jogadas intercaladas, uma categoria por vez.`}
+        Jogando hoje, {formatDateBR(upcoming.date, { withYear: true })} · a rodada vale para {MONTHS[month - 1]}.
       </p>
 
-      <ol className="mt-5 grid grid-cols-3 gap-2" aria-label={`Partidas de ${MONTHS[month - 1]} ${year}`}>
+      <ol className="mt-5 grid grid-cols-3 gap-2" aria-label={`Rodadas de ${MONTHS[month - 1]} ${year}`}>
         {Array.from({ length: MATCHES_PER_MONTH }, (_, i) => i + 1).map((n) => {
           const t = played.find((s) => s.number === n);
           const isNext = n === number;
           return (
             <li
               key={n}
-              className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 ring-1 ${
-                isNext ? "bg-white/10 ring-2 ring-gold/60" : t ? "bg-white/[0.03] ring-white/10" : "ring-white/[0.06] opacity-50"
+              className={`flex flex-col items-center gap-1 rounded-2xl p-3 ring-1 ${
+                isNext ? "bg-white/10 ring-2 ring-gold/60" : t ? "bg-white/[0.03] ring-white/10" : "opacity-50 ring-white/[0.06]"
               }`}
             >
               <DieFace value={n} size={24} />
-              <span className="text-sm font-bold">{n}ª</span>
+              <span className="text-sm font-bold">Rodada {firstRoundOfMonth + n - 1}</span>
+              <span className="text-[0.65rem] text-mist">{n}ª do mês</span>
               <span className={`text-[0.65rem] font-semibold ${isNext ? "text-gold" : t ? "text-fog" : "text-mist"}`}>
                 {t ? `${t.manoel}×${t.ana}` : isNext ? "agora" : "depois"}
               </span>
@@ -298,52 +300,48 @@ function StartPanel({ me, upcoming, onStarted }: { me: PlayerId; upcoming: Upcom
         })}
       </ol>
 
-      {!full && (
-        <>
-          <fieldset className="mt-5">
-            <legend className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-mist">Quem começa?</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {PLAYERS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  aria-pressed={first === p}
-                  onClick={() => setFirst(p)}
-                  className={`min-h-12 rounded-2xl font-display text-lg font-extrabold ring-1 transition active:scale-95 ${
-                    first === p
-                      ? `bg-white/10 ring-2 ${p === "manoel" ? "text-manoel ring-manoel/70" : "text-ana ring-ana/70"}`
-                      : "bg-white/[0.03] text-fog ring-white/10"
-                  }`}
-                >
-                  {PLAYER_NAME[p]}
-                </button>
-              ))}
-            </div>
-          </fieldset>
+      <fieldset className="mt-5">
+        <legend className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-mist">Quem começa?</legend>
+        <div className="grid grid-cols-2 gap-2">
+          {PLAYERS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              aria-pressed={first === p}
+              onClick={() => setFirst(p)}
+              className={`min-h-12 rounded-2xl font-display text-lg font-extrabold ring-1 transition active:scale-95 ${
+                first === p
+                  ? `bg-white/10 ring-2 ${p === "manoel" ? "text-manoel ring-manoel/70" : "text-ana ring-ana/70"}`
+                  : "bg-white/[0.03] text-fog ring-white/10"
+              }`}
+            >
+              {PLAYER_NAME[p]}
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
-          {error && (
-            <p role="alert" className="mt-4 text-sm font-semibold text-ana">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() =>
-              start(async () => {
-                setError(null);
-                const r = await startLiveAction({ firstPlayer: first });
-                if (r.ok) onStarted(r.state);
-                else setError(r.error);
-              })
-            }
-            className="mt-5 min-h-14 w-full rounded-2xl bg-paper text-base font-extrabold text-ink transition active:scale-[.98] disabled:opacity-50"
-          >
-            {pending ? "Criando…" : `Começar a ${number}ª partida`}
-          </button>
-        </>
+      {error && (
+        <p role="alert" className="mt-4 text-sm font-semibold text-ana">
+          {error}
+        </p>
       )}
+
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            setError(null);
+            const r = await startLiveAction({ firstPlayer: first });
+            if (r.ok) onStarted(r.state);
+            else setError(r.error);
+          })
+        }
+        className="mt-5 min-h-14 w-full rounded-2xl bg-paper text-base font-extrabold text-ink transition active:scale-[.98] disabled:opacity-50"
+      >
+        {pending ? "Criando…" : `Começar a rodada ${round}`}
+      </button>
     </section>
   );
 }
@@ -673,7 +671,7 @@ export function LiveMatch({
             <DieFace value={live.number} size={28} />
             <div>
               <p className="font-display text-lg font-extrabold leading-tight">
-                {live.number}ª partida · {MONTHS[live.month - 1]}
+                Rodada {roundOf(live)} · {live.number}ª de {MONTHS[live.month - 1]}
               </p>
               <p className="text-xs text-mist">
                 {formatDateBR(live.date, { withYear: true })}
@@ -772,7 +770,7 @@ export function LiveMatch({
                 Vez de <span className={nameColor(other)}>{PLAYER_NAME[other]}</span>
               </p>
               <span className="ml-auto text-xs text-mist">
-                rodada {otherPlays.length + 1}/{TOTAL_ROUNDS}
+                jogada {otherPlays.length + 1}/{TOTAL_ROUNDS}
               </span>
             </div>
             {!live.entries[other] && <p className="mt-2 text-sm text-fog">Aguardando {PLAYER_NAME[other]} abrir o app…</p>}
@@ -805,7 +803,7 @@ export function LiveMatch({
                 .slice(0, 4)
                 .map((p) => (
                   <li key={`${p.player}-${p.at}`} className="flex items-center gap-2 text-sm">
-                    <span className="w-14 shrink-0 text-xs text-mist">rod. {p.round}</span>
+                    <span className="w-14 shrink-0 text-xs text-mist">jog. {p.round}</span>
                     <span className={`font-bold ${nameColor(p.player)}`}>{p.player === me ? "Você" : PLAYER_NAME[p.player]}</span>
                     <span className="truncate text-fog">{catOf(p.cat).label}</span>
                     <span className="ml-auto font-display font-bold tabular">{p.value === 0 ? "✕" : `+${p.value}`}</span>
@@ -863,7 +861,7 @@ export function LiveMatch({
                 <>
                   <h2 className="font-display text-2xl font-extrabold">Gravar resultado?</h2>
                   <p className="mt-1 text-sm text-fog">
-                    {live.number}ª partida de {MONTHS[live.month - 1]}/{live.year}
+                    Rodada {roundOf(live)} · {live.number}ª de {MONTHS[live.month - 1]}/{live.year}
                     {live.overwrite ? " — vai substituir o registro anterior." : "."}
                   </p>
                   <div className="mt-4 grid grid-cols-2 gap-3">

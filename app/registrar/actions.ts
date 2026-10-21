@@ -3,7 +3,7 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkPin, createSession, destroySession, getSession, isPinConfigured } from "@/lib/auth";
-import { MONTHS, nowInSaoPaulo } from "@/lib/dates";
+import { nowInSaoPaulo } from "@/lib/dates";
 import { isSheetsConfigured } from "@/lib/google-sheets";
 import {
   CATEGORIES,
@@ -14,7 +14,7 @@ import {
   type Scores,
 } from "@/lib/kismet";
 import { clearLive, getLiveState, saveLivePlay, startLive, undoLivePlay, type LiveState } from "@/lib/live";
-import { buildMatch, matchId, nextSlot } from "@/lib/match";
+import { buildMatch, matchId, nextRound } from "@/lib/match";
 import { MATCHES_TAG, MatchConflictError, getMatchesFresh, importLegacy, saveMatch } from "@/lib/matches";
 
 const isPlayer = (v: unknown): v is PlayerId => v === "manoel" || v === "ana";
@@ -90,8 +90,8 @@ export type LiveResult =
   | { ok: false; error: string; conflict?: boolean };
 
 /**
- * Inicia a PRÓXIMA partida do mês corrente — o jogador não escolhe data nem número:
- * data = hoje (São Paulo), mês = mês atual, número = primeira partida livre do mês.
+ * Inicia a PRÓXIMA rodada da sequência — o jogador não escolhe nada além de quem começa:
+ * rodada = última jogada + 1 (ex.: 24 → 25 = 1ª de setembro); data = hoje (São Paulo).
  */
 export async function startLiveAction(input: { firstPlayer: PlayerId }): Promise<LiveResult> {
   const session = await getSession();
@@ -99,19 +99,13 @@ export async function startLiveAction(input: { firstPlayer: PlayerId }): Promise
 
   try {
     const now = nowInSaoPaulo();
-    const next = nextSlot(await getMatchesFresh(), now.year, now.month);
-    if (next === null) {
-      return {
-        ok: false,
-        error: `As ${MATCHES_PER_MONTH} partidas de ${MONTHS[now.month - 1]} já foram jogadas. A próxima fica para o mês que vem.`,
-      };
-    }
+    const next = nextRound(await getMatchesFresh(), now.year);
     const state = await startLive({
-      key: matchId(now.year, now.month, next),
+      key: matchId(next.year, next.month, next.number),
       date: now.iso,
-      year: now.year,
-      month: now.month,
-      number: next,
+      year: next.year,
+      month: next.month,
+      number: next.number,
       overwrite: false,
       startedBy: session.player,
       firstPlayer: isPlayer(input?.firstPlayer) ? input.firstPlayer : session.player,

@@ -184,9 +184,27 @@ export function sortMatches(list: Match[]): Match[] {
 
 export const CATEGORY_IDS = CATEGORIES.map((c) => c.id);
 
-/** Próxima partida livre do mês (1, 2 ou 3) ou null se o mês já está completo. */
-export function nextSlot(list: Pick<Match, "year" | "month" | "number">[], year: number, month: number): number | null {
-  const used = new Set(list.filter((m) => m.year === year && m.month === month).map((m) => m.number));
-  for (let n = 1; n <= MATCHES_PER_MONTH; n++) if (!used.has(n)) return n;
-  return null;
+/** Nº da rodada no ano (1–36): janeiro = 1–3, fevereiro = 4–6 … dezembro = 34–36. */
+export function roundOf(m: Pick<Match, "month" | "number">): number {
+  return (m.month - 1) * MATCHES_PER_MONTH + m.number;
+}
+
+export function slotOfRound(round: number) {
+  return { month: Math.ceil(round / MATCHES_PER_MONTH), number: ((round - 1) % MATCHES_PER_MONTH) + 1 };
+}
+
+export const ROUNDS_PER_YEAR = 12 * MATCHES_PER_MONTH;
+
+/**
+ * Próxima rodada na sequência da planilha: a rodada seguinte à última jogada
+ * da temporada (ano mais recente com partidas). Ex.: última = 24 (3ª de agosto)
+ * → próxima = 25 (1ª de setembro), mesmo que o jogo aconteça em outubro.
+ * Depois da 36ª, a sequência continua na rodada 1 do ano seguinte.
+ */
+export function nextRound(list: Pick<Match, "year" | "month" | "number">[], fallbackYear: number) {
+  const year = list.length ? Math.max(...list.map((m) => m.year)) : fallbackYear;
+  const last = Math.max(0, ...list.filter((m) => m.year === year).map(roundOf));
+  if (last >= ROUNDS_PER_YEAR) return { year: year + 1, round: 1, ...slotOfRound(1) };
+  const round = last + 1;
+  return { year, round, ...slotOfRound(round) };
 }

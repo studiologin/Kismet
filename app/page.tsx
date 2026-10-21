@@ -12,6 +12,7 @@ import { StatsSection } from "@/components/landing/StatsSection";
 import { LiveBanner } from "@/components/app/LiveBanner";
 import { Reveal } from "@/components/ui/Reveal";
 import { MONTHS, MONTHS_SHORT, nowInSaoPaulo } from "@/lib/dates";
+import { nextRound } from "@/lib/match";
 import { getMatches } from "@/lib/matches";
 import { computeStats } from "@/lib/stats";
 
@@ -22,7 +23,9 @@ export default async function HomePage() {
   const { matches, source, error } = await getMatches();
   const stats = computeStats(matches);
   const now = nowInSaoPaulo();
-  const monthMatches = matches.filter((m) => m.year === now.year && m.month === now.month);
+  // mês em disputa = mês da próxima rodada na sequência (ex.: rodada 25 → setembro)
+  const next = nextRound(matches, now.year);
+  const monthMatches = matches.filter((m) => m.year === next.year && m.month === next.month);
 
   const years = [...new Set(matches.map((m) => m.year))];
   const seasonLabel = years.length
@@ -57,7 +60,7 @@ export default async function HomePage() {
           seasonLabel={seasonLabel}
         />
         <Marquee words={["Ases", "Trinca", "Full House", "Flush", "Quadra", "Yarborough", "Kismet"]} />
-        <MonthNow year={now.year} month={now.month} matches={monthMatches} />
+        <MonthNow year={next.year} month={next.month} nextRound={next.round} matches={monthMatches} />
         <StatsSection stats={stats} />
         <section id="evolucao" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-20 sm:px-6 sm:py-28">
           <SectionHeading index="03" eyebrow="Evolução mensal" title="A curva da disputa" />

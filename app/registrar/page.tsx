@@ -8,7 +8,7 @@ import { nowInSaoPaulo } from "@/lib/dates";
 import { isSheetsConfigured } from "@/lib/google-sheets";
 import { PLAYER_NAME } from "@/lib/kismet";
 import { getLiveState } from "@/lib/live";
-import { nextSlot } from "@/lib/match";
+import { nextRound } from "@/lib/match";
 import { getMatches } from "@/lib/matches";
 
 export const metadata: Metadata = { title: "Partida" };
@@ -21,8 +21,9 @@ export default async function RegistrarPage() {
   const [{ matches, source }, live] = await Promise.all([getMatches(), getLiveState(true).catch(() => null)]);
   const now = nowInSaoPaulo();
   const list = source === "demo" ? [] : matches;
+  const next = nextRound(list, now.year);
   const played: TakenSlot[] = list
-    .filter((m) => m.year === now.year && m.month === now.month)
+    .filter((m) => m.year === next.year && m.month === next.month)
     .map((m) => ({
           year: m.year,
           month: m.month,
@@ -33,10 +34,11 @@ export default async function RegistrarPage() {
       winner: m.winner === "empate" ? "empate" : `${PLAYER_NAME[m.winner]} venceu`,
     }));
   const upcoming: Upcoming = {
-    year: now.year,
-    month: now.month,
+    year: next.year,
+    month: next.month,
+    number: next.number,
+    round: next.round,
     date: now.iso,
-    number: nextSlot(list, now.year, now.month),
     played,
   };
 

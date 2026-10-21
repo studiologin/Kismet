@@ -1,6 +1,6 @@
 import { Reveal } from "@/components/ui/Reveal";
 import { formatDateBR, MONTHS_SHORT } from "@/lib/dates";
-import type { Match } from "@/lib/match";
+import { roundOf, type Match } from "@/lib/match";
 import { SectionHeading } from "./SectionHeading";
 import { WinnerBadge } from "./WinnerBadge";
 
@@ -31,10 +31,10 @@ export function RecentMatches({ matches }: { matches: Match[] }) {
                   <header className="mb-5 flex items-start justify-between gap-2">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.2em] text-mist">
-                        {i === 0 ? <span className="text-gold">mais recente</span> : `#${matches.length - i}`}
+                        {i === 0 ? <span className="text-gold">mais recente</span> : `${m.number}ª de ${MONTHS_SHORT[m.month - 1]}`}
                       </p>
                       <p className="mt-1 font-display text-lg font-bold">
-                        Partida {m.number} · {MONTHS_SHORT[m.month - 1]}/{String(m.year).slice(2)}
+                        Rodada {roundOf(m)} · {MONTHS_SHORT[m.month - 1]}/{String(m.year).slice(2)}
                       </p>
                       {m.date && <p className="text-xs text-fog">{formatDateBR(m.date, { withYear: true })}</p>}
                     </div>

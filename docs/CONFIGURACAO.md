@@ -136,10 +136,14 @@ Dois pares mesma cor…Kismet, Total Inferior, Total] · [Ana: idem] · Vencedor
 
 - **Perfis:** em `/registrar` cada um escolhe *Manoel* ou *Ana* e digita o próprio PIN. O celular fica
   logado por 90 dias.
-- **Ao vivo, por turnos:** o app sempre abre a **próxima partida** do mês (data de hoje e o primeiro
-  número livre: 1ª, 2ª, 3ª — com 3 jogadas o mês fica fechado); quem cria escolhe só **quem começa**. O outro
+- **Rodadas em sequência:** as partidas seguem a numeração da planilha — rodadas 1 a 36 no ano,
+  3 por mês (jan = 1–3 … dez = 34–36). O app sempre abre a **próxima rodada** (última jogada + 1), e o
+  mês que ela vale é o da sequência, não o do calendário: se a última foi a 24 (3ª de agosto), a
+  próxima é a **rodada 25 = 1ª de setembro**, mesmo jogando em outubro. A data gravada é a do dia do
+  jogo. Depois da 36ª, a sequência recomeça na rodada 1 do ano seguinte.
+- **Ao vivo, por turnos:** quem cria a partida escolhe só **quem começa**. O outro
   abre o app e entra na mesma partida. As jogadas são intercaladas, como no jogo de verdade: na sua
-  vez, você escolhe a categoria, marca os pontos (botões rápidos por nº de dados, "fez/riscar" ou o
+  vez (jogada 1 a 15), você escolhe a categoria, marca os pontos (botões rápidos por nº de dados, "fez/riscar" ou o
   valor) e toca em **Salvar jogada** — ela é gravada na hora e a vez passa para o outro, que recebe
   um aviso com o que você marcou (em até 3 segundos).
 - **Desfazer:** errou? Enquanto o outro ainda não jogou, toque em *Desfazer* e a vez volta para você.

@@ -25,7 +25,7 @@ export function LiveBanner() {
           Ao vivo
         </span>
         <span className="truncate text-xs text-fog">
-          {live.number}ª · {MONTHS[live.month - 1]}
+          Rodada {(live.month - 1) * 3 + live.number} · {MONTHS[live.month - 1]}
           {live.turn && <> · vez de {live.turn === "manoel" ? "Manoel" : "Ana"}</>}
         </span>
         <span className="font-display text-lg font-extrabold tabular">

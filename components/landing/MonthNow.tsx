@@ -21,7 +21,18 @@ function ScoreLine({ name, total, max, color, win }: { name: string; total: numb
   );
 }
 
-export function MonthNow({ year, month, matches }: { year: number; month: number; matches: Match[] }) {
+export function MonthNow({
+  year,
+  month,
+  nextRound,
+  matches,
+}: {
+  year: number;
+  month: number;
+  nextRound: number;
+  matches: Match[];
+}) {
+  const baseRound = (month - 1) * MATCHES_PER_MONTH + 1;
   const slots = Array.from({ length: MATCHES_PER_MONTH }, (_, i) => matches.find((m) => m.number === i + 1));
   const wins = {
     manoel: matches.filter((m) => m.winner === "manoel").length,
@@ -33,7 +44,7 @@ export function MonthNow({ year, month, matches }: { year: number; month: number
     <section id="mes" className="relative mx-auto max-w-6xl scroll-mt-24 px-4 py-20 sm:px-6 sm:py-28">
       <SectionHeading
         index="01"
-        eyebrow="Mês corrente"
+        eyebrow={`Mês em disputa · próxima: rodada ${nextRound}`}
         title={monthLabel(year, month)}
         aside={
           <Reveal delay={0.1} className="glass flex items-center gap-5 rounded-2xl px-5 py-3">
@@ -72,7 +83,7 @@ export function MonthNow({ year, month, matches }: { year: number; month: number
                   <div className="flex items-center gap-3">
                     <DieFace value={i + 1} size={30} />
                     <div>
-                      <p className="font-display text-lg font-bold leading-none">Partida {i + 1}</p>
+                      <p className="font-display text-lg font-bold leading-none">Rodada {baseRound + i}</p>
                       <p className="mt-1 text-xs text-mist">{m.date ? formatDateBR(m.date, { withYear: true }) : "data não informada"}</p>
                     </div>
                   </div>
@@ -91,8 +102,8 @@ export function MonthNow({ year, month, matches }: { year: number; month: number
                 <div className="opacity-40 transition-opacity group-hover:opacity-100">
                   <DieFace value={i + 1} size={34} />
                 </div>
-                <p className="font-display text-lg font-bold text-fog">Partida {i + 1}</p>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-mist group-hover:text-gold">a jogar · registrar</p>
+                <p className="font-display text-lg font-bold text-fog">Rodada {baseRound + i}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-mist group-hover:text-gold">{baseRound + i === nextRound ? "próxima · jogar" : "a jogar"}</p>
               </Link>
             )}
           </Reveal>
