@@ -2,27 +2,45 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { checkPin, createSession, destroySession, isAuthenticated, isPinConfigured } from "@/lib/auth";
+import { checkPin, createSession, destroySession, getSession, isPinConfigured } from "@/lib/auth";
 import { nowInSaoPaulo } from "@/lib/dates";
 import { isSheetsConfigured } from "@/lib/google-sheets";
-import { CATEGORIES, MATCHES_PER_MONTH, PLAYER_NAME, validateScore, type PlayerId, type Scores } from "@/lib/kismet";
-import { buildMatch } from "@/lib/match";
-import { MATCHES_TAG, MatchConflictError, importLegacy, saveMatch } from "@/lib/matches";
+import {
+  CATEGORIES,
+  MATCHES_PER_MONTH,
+  PLAYER_NAME,
+  validateScore,
+  type PlayerId,
+  type Scores,
+} from "@/lib/kismet";
+import { clearLive, getLiveState, saveLiveScores, startLive, type LiveState } from "@/lib/live";
+import { buildMatch, matchId } from "@/lib/match";
+import { MATCHES_TAG, MatchConflictError, getMatchesFresh, importLegacy, saveMatch } from "@/lib/matches";
 
-/* ───────────── login ───────────── */
+const isPlayer = (v: unknown): v is PlayerId => v === "manoel" || v === "ana";
+
+function refreshPages() {
+  updateTag(MATCHES_TAG);
+  revalidatePath("/");
+  revalidatePath("/registrar");
+}
+
+/* ───────────── login por perfil ───────────── */
 
 export interface LoginState {
   error?: string;
 }
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  if (!isPinConfigured()) return { error: "ADMIN_PIN não configurado no servidor." };
+  if (!isPinConfigured()) return { error: "PINs não configurados no servidor (MANOEL_PIN / ANA_PIN)." };
+  const player = formData.get("player");
+  if (!isPlayer(player)) return { error: "Escolha quem está entrando." };
   const pin = String(formData.get("pin") ?? "");
-  if (!checkPin(pin)) {
+  if (!checkPin(player, pin)) {
     await new Promise((r) => setTimeout(r, 600)); // freio simples contra tentativa e erro
     return { error: "PIN incorreto." };
   }
-  await createSession();
+  await createSession(player);
   redirect("/registrar");
 }
 
@@ -31,7 +49,139 @@ export async function logoutAction() {
   redirect("/");
 }
 
-/* ───────────── salvar partida ───────────── */
+/* ───────────── validação comum ───────────── */
+
+function validateHeader(i: { date: string; year: number; month: number; number: number }): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(i.date)) return "Data inválida.";
+  if (!Number.isInteger(i.year) || i.year < 2000 || i.year > 2100) return "Ano inválido.";
+  if (!Number.isInteger(i.month) || i.month < 1 || i.month > 12) return "Mês inválido.";
+  if (!Number.isInteger(i.number) || i.number < 1 || i.number > MATCHES_PER_MONTH) {
+    return `Nº da partida deve ser de 1 a ${MATCHES_PER_MONTH}.`;
+  }
+  return null;
+}
+
+function validateCard(player: PlayerId, raw: Partial<Record<string, number | null>> | undefined) {
+  const errors: string[] = [];
+  const s = {} as Scores;
+  for (const cat of CATEGORIES) {
+    const v = raw?.[cat.id];
+    const value = v === null || v === undefined ? null : Number(v);
+    const err = validateScore(cat, value);
+    if (err) errors.push(`${PLAYER_NAME[player]} · ${cat.label}: ${err}`);
+    s[cat.id] = value ?? 0;
+  }
+  return { scores: s, errors };
+}
+
+/* ───────────── partida ao vivo ───────────── */
+
+export type LiveResult = { ok: true; state: LiveState | null } | { ok: false; error: string; conflict?: boolean };
+
+export async function startLiveAction(input: {
+  date: string;
+  year: number;
+  month: number;
+  number: number;
+  overwrite: boolean;
+}): Promise<LiveResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  const headerError = validateHeader(input);
+  if (headerError) return { ok: false, error: headerError };
+
+  try {
+    const all = await getMatchesFresh();
+    const inMonth = all.filter((m) => m.year === input.year && m.month === input.month);
+    const taken = inMonth.find((m) => m.number === input.number);
+    if (taken && !input.overwrite) {
+      return { ok: false, conflict: true, error: `A partida ${input.number} deste mês já foi registrada.` };
+    }
+    if (!taken && inMonth.length >= MATCHES_PER_MONTH) {
+      return { ok: false, error: `Este mês já tem ${MATCHES_PER_MONTH} partidas.` };
+    }
+    const state = await startLive({
+      key: matchId(input.year, input.month, input.number),
+      date: input.date,
+      year: input.year,
+      month: input.month,
+      number: input.number,
+      overwrite: Boolean(input.overwrite),
+      startedBy: session.player,
+    });
+    return { ok: true, state };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Não foi possível iniciar a partida." };
+  }
+}
+
+/** Grava a coluna do jogador logado (cada um só altera a própria pontuação). */
+export async function saveMyScoresAction(scores: Partial<Record<string, number | null>>): Promise<LiveResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  try {
+    const state = await saveLiveScores(session.player, scores);
+    return { ok: true, state };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao sincronizar." };
+  }
+}
+
+export type FinalizeResult =
+  | { ok: true; summary: { id: string; manoel: number; ana: number; winner: string } }
+  | { ok: false; error: string; fieldErrors?: string[] };
+
+export async function finalizeLiveAction(): Promise<FinalizeResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  if (!isSheetsConfigured()) return { ok: false, error: "Google Sheets não configurado." };
+
+  const live = await getLiveState(true);
+  if (!live) return { ok: false, error: "Nenhuma partida em andamento." };
+
+  const m = validateCard("manoel", live.entries.manoel?.scores);
+  const a = validateCard("ana", live.entries.ana?.scores);
+  const fieldErrors = [...m.errors, ...a.errors];
+  if (fieldErrors.length) {
+    return { ok: false, error: "As duas cartelas precisam estar completas e válidas.", fieldErrors };
+  }
+
+  const match = buildMatch({
+    date: live.date,
+    year: live.year,
+    month: live.month,
+    number: live.number,
+    scores: { manoel: m.scores, ana: a.scores },
+    registeredAt: `${nowInSaoPaulo().stamp} · ao vivo`,
+  });
+
+  try {
+    await saveMatch(match, live.overwrite);
+    await clearLive();
+    refreshPages();
+    return {
+      ok: true,
+      summary: {
+        id: match.id,
+        manoel: match.totals.manoel.total,
+        ana: match.totals.ana.total,
+        winner: match.winner === "empate" ? "Empate" : PLAYER_NAME[match.winner],
+      },
+    };
+  } catch (e) {
+    if (e instanceof MatchConflictError) return { ok: false, error: e.message };
+    return { ok: false, error: e instanceof Error ? e.message : "Erro ao gravar na planilha." };
+  }
+}
+
+export async function cancelLiveAction(): Promise<LiveResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
+  await clearLive();
+  return { ok: true, state: null };
+}
+
+/* ───────────── lançamento manual (as duas colunas) ───────────── */
 
 export interface SaveInput {
   date: string;
@@ -51,50 +201,30 @@ export type SaveResult =
   | { ok: false; error: string; conflict?: boolean; fieldErrors?: string[] };
 
 export async function saveMatchAction(input: SaveInput): Promise<SaveResult> {
-  if (!(await isAuthenticated())) return { ok: false, error: "Sessão expirada. Entre com o PIN novamente." };
+  if (!(await getSession())) return { ok: false, error: "Sessão expirada. Entre com o PIN novamente." };
   if (!isSheetsConfigured()) {
     return { ok: false, error: "Google Sheets não configurado. Defina as variáveis de ambiente (veja o guia)." };
   }
+  const headerError = validateHeader(input);
+  if (headerError) return { ok: false, error: headerError };
 
-  // validação de cabeçalho
-  const { date, year, month, number } = input;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "Data inválida." };
-  if (!Number.isInteger(year) || year < 2000 || year > 2100) return { ok: false, error: "Ano inválido." };
-  if (!Number.isInteger(month) || month < 1 || month > 12) return { ok: false, error: "Mês inválido." };
-  if (!Number.isInteger(number) || number < 1 || number > MATCHES_PER_MONTH) {
-    return { ok: false, error: `Nº da partida deve ser de 1 a ${MATCHES_PER_MONTH}.` };
-  }
-
-  // validação da cartela
-  const fieldErrors: string[] = [];
-  const clean = {} as Record<PlayerId, Scores>;
-  for (const player of ["manoel", "ana"] as PlayerId[]) {
-    const s = {} as Scores;
-    for (const cat of CATEGORIES) {
-      const raw = input.scores?.[player]?.[cat.id];
-      const value = raw === null || raw === undefined ? null : Number(raw);
-      const err = validateScore(cat, value);
-      if (err) fieldErrors.push(`${PLAYER_NAME[player]} · ${cat.label}: ${err}`);
-      s[cat.id] = value ?? 0;
-    }
-    clean[player] = s;
-  }
+  const m = validateCard("manoel", input.scores?.manoel);
+  const a = validateCard("ana", input.scores?.ana);
+  const fieldErrors = [...m.errors, ...a.errors];
   if (fieldErrors.length) return { ok: false, error: "Corrija os campos destacados.", fieldErrors };
 
   const match = buildMatch({
-    date,
-    year,
-    month,
-    number,
-    scores: clean,
+    date: input.date,
+    year: input.year,
+    month: input.month,
+    number: input.number,
+    scores: { manoel: m.scores, ana: a.scores },
     registeredAt: nowInSaoPaulo().stamp,
   });
 
   try {
     const status = await saveMatch(match, Boolean(input.overwrite));
-    updateTag(MATCHES_TAG);
-    revalidatePath("/");
-    revalidatePath("/registrar");
+    refreshPages();
     return {
       ok: true,
       status,
@@ -117,14 +247,12 @@ export async function saveMatchAction(input: SaveInput): Promise<SaveResult> {
 export type ImportResult = { ok: true; imported: number; skipped: number } | { ok: false; error: string };
 
 export async function importLegacyAction(year: number): Promise<ImportResult> {
-  if (!(await isAuthenticated())) return { ok: false, error: "Sessão expirada." };
+  if (!(await getSession())) return { ok: false, error: "Sessão expirada." };
   if (!isSheetsConfigured()) return { ok: false, error: "Google Sheets não configurado." };
   if (!Number.isInteger(year) || year < 2000 || year > 2100) return { ok: false, error: "Ano inválido." };
   try {
     const r = await importLegacy(year);
-    updateTag(MATCHES_TAG);
-    revalidatePath("/");
-    revalidatePath("/registrar");
+    refreshPages();
     return { ok: true, ...r };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Falha na importação." };

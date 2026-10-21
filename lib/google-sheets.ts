@@ -19,7 +19,8 @@ export function sheetsConfig() {
   const sheetId = process.env.GOOGLE_SHEET_ID?.trim();
   const tab = process.env.GOOGLE_SHEET_TAB?.trim() || "Partidas";
   const legacyTab = process.env.GOOGLE_LEGACY_TAB?.trim() || "Nucha & Manoel";
-  return { email, key, sheetId, tab, legacyTab, ok: Boolean(email && key && sheetId) };
+  const liveTab = process.env.GOOGLE_LIVE_TAB?.trim() || "AoVivo";
+  return { email, key, sheetId, tab, legacyTab, liveTab, ok: Boolean(email && key && sheetId) };
 }
 
 export function isSheetsConfigured() {
@@ -128,4 +129,8 @@ export async function appendValues(range: string, values: (string | number)[][])
     method: "POST",
     body: JSON.stringify({ range, majorDimension: "ROWS", values }),
   });
+}
+
+export async function clearValues(range: string) {
+  await api(`/values/${q(range)}:clear`, { method: "POST", body: "{}" });
 }

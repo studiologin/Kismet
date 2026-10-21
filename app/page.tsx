@@ -9,6 +9,7 @@ import { RecentMatches } from "@/components/landing/RecentMatches";
 import { SectionHeading } from "@/components/landing/SectionHeading";
 import { SourceBanner } from "@/components/landing/SourceBanner";
 import { StatsSection } from "@/components/landing/StatsSection";
+import { LiveBanner } from "@/components/app/LiveBanner";
 import { Reveal } from "@/components/ui/Reveal";
 import { MONTHS, MONTHS_SHORT, nowInSaoPaulo } from "@/lib/dates";
 import { getMatches } from "@/lib/matches";
@@ -42,6 +43,7 @@ export default async function HomePage() {
     <>
       <Header />
       <SourceBanner source={source} error={error} />
+      <LiveBanner />
       <main>
         <Hero
           wins={{ manoel: stats.players.manoel.wins, ana: stats.players.ana.wins }}

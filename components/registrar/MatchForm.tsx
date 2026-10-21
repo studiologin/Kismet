@@ -391,7 +391,7 @@ export function MatchForm({
 
   /* ───────────── formulário ───────────── */
   return (
-    <div className="pb-40">
+    <div className="pb-44">
       {!sheetsReady && (
         <p className="mb-6 rounded-2xl bg-gold/10 p-4 text-sm text-gold ring-1 ring-gold/30">
           O Google Sheets ainda não está configurado: dá para preencher e conferir a cartela, mas a gravação vai falhar até as
@@ -621,7 +621,7 @@ export function MatchForm({
       </section>
 
       {/* barra fixa de totais */}
-      <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 px-3 md:bottom-4">
         <div className="glass mx-auto flex max-w-3xl items-center gap-3 rounded-2xl !bg-ink/80 p-2.5 pl-4">
           <div className="min-w-0 flex-1">
             <p className="font-display text-2xl font-extrabold leading-none tabular">

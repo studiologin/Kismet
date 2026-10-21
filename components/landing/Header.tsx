@@ -31,7 +31,7 @@ export function Header() {
           href="/registrar"
           className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-paper px-3.5 py-2 text-sm font-bold text-ink transition-transform active:scale-95"
         >
-          <span className="relative z-10">Registrar</span>
+          <span className="relative z-10">Partida</span>
           <span aria-hidden className="relative z-10 text-base leading-none transition-transform group-hover:rotate-90">+</span>
           <span aria-hidden className="absolute inset-0 -translate-x-full bg-gold transition-transform duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0" />
         </Link>

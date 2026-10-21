@@ -5,9 +5,13 @@ com cartela de registro integrada à planilha **KISMET RESULTADOS** (Google Shee
 
 - **Landing pública** (`/`): placar geral e líder, mês corrente (x/3), duelo de estatísticas,
   evolução mensal em gráfico, histórico mês a mês com acumulado e últimas partidas.
-- **Registro** (`/registrar`, protegido por PIN): cartela lado a lado com cálculo automático
-  de subtotal, bônus, totais e vencedor; validação por categoria; confirmação antes de salvar;
-  bloqueio da 4ª partida do mês (com opção de sobrescrever); rascunho salvo no aparelho.
+- **Partida ao vivo** (`/registrar`): perfis Manoel e Ana, cada um com PIN próprio. Cada jogador
+  preenche a própria coluna no celular e vê a do outro em tempo real (sincronização a cada 3 s via
+  aba `AoVivo` da planilha). Cálculo automático de bônus, totais e vencedor; bloqueio da 4ª partida
+  do mês (com opção de sobrescrever); finalizar grava na aba `Partidas`.
+- **Lançamento manual** (`/registrar/manual`): as duas colunas de uma vez, para correções.
+- **App instalável (PWA)**: manifesto, ícones, service worker com página offline, navegação
+  inferior estilo app e botão "Instalar" (Android) / instruções (iPhone).
 - **Histórico antigo** (aba `Nucha & Manoel`) lido automaticamente junto com a aba de partidas; importação opcional em um clique para consolidar, sem duplicar.
 
 ## Stack

@@ -61,7 +61,10 @@ https://docs.google.com/spreadsheets/d/1AbCdEf...XyZ/edit#gid=0
 | `GOOGLE_SHEET_ID`              | sim         | ID do passo 4                                                            |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | sim         | `kismet-score@seu-projeto.iam.gserviceaccount.com`                       |
 | `GOOGLE_PRIVATE_KEY`           | sim         | `"-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"`    |
-| `ADMIN_PIN`                    | sim         | PIN de 4–8 dígitos para acessar `/registrar`                              |
+| `MANOEL_PIN`                   | sim         | PIN do perfil Manoel (4–8 dígitos)                                        |
+| `ANA_PIN`                      | sim         | PIN do perfil Ana (4–8 dígitos)                                           |
+| `ADMIN_PIN`                    | não         | PIN geral: entra em qualquer um dos dois perfis (opcional)                |
+| `GOOGLE_LIVE_TAB`              | não         | padrão `AoVivo` — aba da partida em andamento, criada automaticamente     |
 | `SESSION_SECRET`               | recomendada | texto aleatório longo (assina o cookie de sessão)                        |
 | `GOOGLE_SHEET_TAB`             | não         | padrão `Partidas` — criada automaticamente com cabeçalho                 |
 | `GOOGLE_LEGACY_TAB`            | não         | padrão `Nucha & Manoel` — histórico antigo, lido automaticamente          |
@@ -128,3 +131,21 @@ Dois pares mesma cor…Kismet, Total Inferior, Total] · [Ana: idem] · Vencedor
 | “Falha na autenticação Google (400)”                 | `GOOGLE_PRIVATE_KEY` mal colada (faltando `-----BEGIN…` ou `\n`).                              |
 | “Google Sheets API has not been used in project…”    | API não ativada (passo 1).                                                                   |
 | PIN não aceito                                       | Confira `ADMIN_PIN` na Vercel e faça redeploy.                                               |
+
+## 9. Partida ao vivo e app no celular
+
+- **Perfis:** em `/registrar` cada um escolhe *Manoel* ou *Ana* e digita o próprio PIN. O celular fica
+  logado por 90 dias.
+- **Ao vivo:** quem começa escolhe data e nº da partida; o outro abre o app e entra na mesma partida.
+  Cada um preenche **só a própria coluna** — ela é salva sozinha (≈1 s depois de digitar) e aparece no
+  celular do outro em até 3 segundos, com destaque no que acabou de mudar.
+- **Finalizar:** quando as duas cartelas estão completas e válidas, qualquer um toca em *Finalizar* →
+  a partida vai para a aba **Partidas** e o placar se atualiza.
+- A aba **AoVivo** da planilha guarda a partida em andamento (uma linha por jogador) e é limpa ao
+  finalizar ou cancelar. Não edite essa aba à mão durante o jogo.
+- **Lançamento manual** (`/registrar/manual`): preenche as duas colunas de uma vez — para correções.
+- **Instalar no celular:**
+  - *Android (Chrome):* abra o site → aparece "Instalar o Kismet" (ou menu ⋮ → *Instalar app*).
+  - *iPhone (Safari):* botão *Compartilhar* → *Adicionar à Tela de Início*.
+  O app abre em tela cheia direto na partida, com navegação inferior (Placar · Partida · Histórico).
+
