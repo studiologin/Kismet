@@ -1,5 +1,6 @@
 import {
   CATEGORIES,
+  MATCHES_PER_MONTH,
   LOWER,
   PLAYERS,
   PLAYER_NAME,
@@ -182,3 +183,10 @@ export function sortMatches(list: Match[]): Match[] {
 }
 
 export const CATEGORY_IDS = CATEGORIES.map((c) => c.id);
+
+/** Próxima partida livre do mês (1, 2 ou 3) ou null se o mês já está completo. */
+export function nextSlot(list: Pick<Match, "year" | "month" | "number">[], year: number, month: number): number | null {
+  const used = new Set(list.filter((m) => m.year === year && m.month === month).map((m) => m.number));
+  for (let n = 1; n <= MATCHES_PER_MONTH; n++) if (!used.has(n)) return n;
+  return null;
+}

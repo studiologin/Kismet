@@ -237,185 +237,102 @@ function PlayComposer({
   );
 }
 
-/* ───────────── tela inicial: começar partida ───────────── */
+/* ───────────── tela inicial: próxima partida ───────────── */
 
-function StartPanel({
-  me,
-  taken,
-  today,
-  onStarted,
-}: {
-  me: PlayerId;
-  taken: TakenSlot[];
-  today: string;
-  onStarted: (s: LiveState | null) => void;
-}) {
-  const [date, setDate] = useState(today);
-  const [ref, setRef] = useState({ year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)) });
-  const [linked, setLinked] = useState(true);
-  const [number, setNumber] = useState(1);
+export interface Upcoming {
+  year: number;
+  month: number;
+  date: string; // hoje (ISO)
+  number: number | null; // próxima partida livre do mês; null = mês completo
+  played: TakenSlot[]; // partidas já jogadas no mês
+}
+
+function StartPanel({ me, upcoming, onStarted }: { me: PlayerId; upcoming: Upcoming; onStarted: (s: LiveState | null) => void }) {
   const [first, setFirst] = useState<PlayerId>(me);
-  const [overwrite, setOverwrite] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-
-  useEffect(() => {
-    if (!linked || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
-    setRef({ year: Number(date.slice(0, 4)), month: Number(date.slice(5, 7)) });
-  }, [date, linked]);
-
-  const monthTaken = useMemo(() => taken.filter((t) => t.year === ref.year && t.month === ref.month), [taken, ref.year, ref.month]);
-  const monthFull = monthTaken.length >= MATCHES_PER_MONTH;
-  const slotTaken = monthTaken.find((t) => t.number === number);
-
-  useEffect(() => {
-    const used = new Set(monthTaken.map((t) => t.number));
-    const free = Array.from({ length: MATCHES_PER_MONTH }, (_, i) => i + 1).find((n) => !used.has(n));
-    setNumber(free ?? MATCHES_PER_MONTH);
-    setOverwrite(false);
-  }, [monthTaken]);
+  const { number, month, year, played } = upcoming;
+  const full = number === null;
 
   return (
     <section className="glass rounded-[1.75rem] p-5">
-      <h2 className="font-display text-2xl font-extrabold">Nova partida</h2>
+      <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-gold">{full ? "Mês completo" : "Próxima partida"}</p>
+      <h2 className="mt-1 font-display text-3xl font-extrabold">
+        {full ? `${MONTHS[month - 1]} encerrado` : `${number}ª de ${MONTHS[month - 1]}`}
+      </h2>
       <p className="mt-1 text-sm text-fog">
-        As jogadas são intercaladas: cada um marca uma categoria por vez. {PLAYER_NAME[otherPlayer(me)]} entra na partida sozinho ao abrir o app.
+        {full
+          ? `As ${MATCHES_PER_MONTH} partidas de ${MONTHS[month - 1]} já foram jogadas. A próxima abre no mês que vem.`
+          : `${formatDateBR(upcoming.date, { withYear: true })} · jogadas intercaladas, uma categoria por vez.`}
       </p>
 
-      <div className="mt-5 grid gap-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-mist">Data</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="min-h-12 rounded-xl border border-white/10 bg-white/[0.04] px-3 font-semibold text-paper outline-none [color-scheme:dark] focus:border-gold/60"
-          />
-        </label>
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-mist">Mês de referência</span>
-          <div className="grid grid-cols-[1fr_6rem] gap-2">
-            <select
-              aria-label="Mês"
-              value={ref.month}
-              onChange={(e) => {
-                setLinked(false);
-                setRef((r) => ({ ...r, month: Number(e.target.value) }));
-              }}
-              className="min-h-12 rounded-xl border border-white/10 bg-ink-3 px-3 font-semibold text-paper outline-none"
+      <ol className="mt-5 grid grid-cols-3 gap-2" aria-label={`Partidas de ${MONTHS[month - 1]} ${year}`}>
+        {Array.from({ length: MATCHES_PER_MONTH }, (_, i) => i + 1).map((n) => {
+          const t = played.find((s) => s.number === n);
+          const isNext = n === number;
+          return (
+            <li
+              key={n}
+              className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 ring-1 ${
+                isNext ? "bg-white/10 ring-2 ring-gold/60" : t ? "bg-white/[0.03] ring-white/10" : "ring-white/[0.06] opacity-50"
+              }`}
             >
-              {MONTHS.map((mo, i) => (
-                <option key={mo} value={i + 1}>
-                  {mo}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Ano"
-              value={ref.year}
-              onChange={(e) => {
-                setLinked(false);
-                setRef((r) => ({ ...r, year: Number(e.target.value) }));
-              }}
-              className="min-h-12 rounded-xl border border-white/10 bg-ink-3 px-3 font-semibold text-paper outline-none"
-            >
-              {[ref.year - 1, ref.year, ref.year + 1].map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+              <DieFace value={n} size={24} />
+              <span className="text-sm font-bold">{n}ª</span>
+              <span className={`text-[0.65rem] font-semibold ${isNext ? "text-gold" : t ? "text-fog" : "text-mist"}`}>
+                {t ? `${t.manoel}×${t.ana}` : isNext ? "agora" : "depois"}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
 
-        <fieldset>
-          <legend className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-mist">
-            Partida do mês · {monthTaken.length}/{MATCHES_PER_MONTH} jogadas
-          </legend>
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: MATCHES_PER_MONTH }, (_, i) => i + 1).map((n) => {
-              const t = monthTaken.find((s) => s.number === n);
-              return (
+      {!full && (
+        <>
+          <fieldset className="mt-5">
+            <legend className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-mist">Quem começa?</legend>
+            <div className="grid grid-cols-2 gap-2">
+              {PLAYERS.map((p) => (
                 <button
-                  key={n}
+                  key={p}
                   type="button"
-                  aria-pressed={number === n}
-                  onClick={() => {
-                    setNumber(n);
-                    setOverwrite(false);
-                  }}
-                  className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 ring-1 transition active:scale-95 ${
-                    number === n ? "bg-white/10 ring-gold/60" : "bg-white/[0.03] ring-white/10"
+                  aria-pressed={first === p}
+                  onClick={() => setFirst(p)}
+                  className={`min-h-12 rounded-2xl font-display text-lg font-extrabold ring-1 transition active:scale-95 ${
+                    first === p
+                      ? `bg-white/10 ring-2 ${p === "manoel" ? "text-manoel ring-manoel/70" : "text-ana ring-ana/70"}`
+                      : "bg-white/[0.03] text-fog ring-white/10"
                   }`}
                 >
-                  <DieFace value={n} size={24} />
-                  <span className="text-sm font-bold">{n}ª</span>
-                  <span className={`text-[0.65rem] font-semibold ${t ? "text-gold" : "text-mist"}`}>{t ? `${t.manoel}×${t.ana}` : "livre"}</span>
+                  {PLAYER_NAME[p]}
                 </button>
-              );
-            })}
-          </div>
-        </fieldset>
+              ))}
+            </div>
+          </fieldset>
 
-        <fieldset>
-          <legend className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-mist">Quem começa?</legend>
-          <div className="grid grid-cols-2 gap-2">
-            {PLAYERS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                aria-pressed={first === p}
-                onClick={() => setFirst(p)}
-                className={`min-h-12 rounded-2xl font-display text-lg font-extrabold ring-1 transition active:scale-95 ${
-                  first === p
-                    ? `bg-white/10 ring-2 ${p === "manoel" ? "text-manoel ring-manoel/70" : "text-ana ring-ana/70"}`
-                    : "bg-white/[0.03] text-fog ring-white/10"
-                }`}
-              >
-                {PLAYER_NAME[p]}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        {(monthFull || slotTaken) && (
-          <div className="rounded-2xl bg-ana/10 p-4 ring-1 ring-ana/30">
-            <p className="text-sm font-bold text-ana">
-              {monthFull
-                ? `${MONTHS[ref.month - 1]} já tem as ${MATCHES_PER_MONTH} partidas — não dá para jogar uma 4ª.`
-                : `A ${number}ª partida deste mês já está registrada.`}
+          {error && (
+            <p role="alert" className="mt-4 text-sm font-semibold text-ana">
+              {error}
             </p>
-            {slotTaken && (
-              <label className="mt-3 flex items-center gap-3 text-sm font-semibold">
-                <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} className="size-5 accent-[#ff4f79]" />
-                Jogar de novo e sobrescrever a {number}ª ({slotTaken.manoel}×{slotTaken.ana})
-              </label>
-            )}
-          </div>
-        )}
+          )}
 
-        {error && (
-          <p role="alert" className="text-sm font-semibold text-ana">
-            {error}
-          </p>
-        )}
-
-        <button
-          type="button"
-          disabled={pending || Boolean(slotTaken && !overwrite)}
-          onClick={() =>
-            start(async () => {
-              setError(null);
-              const r = await startLiveAction({ date, year: ref.year, month: ref.month, number, overwrite, firstPlayer: first });
-              if (r.ok) onStarted(r.state);
-              else setError(r.error);
-            })
-          }
-          className="min-h-14 rounded-2xl bg-paper text-base font-extrabold text-ink transition active:scale-[.98] disabled:opacity-50"
-        >
-          {pending ? "Criando…" : `Começar a ${number}ª partida`}
-        </button>
-      </div>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                setError(null);
+                const r = await startLiveAction({ firstPlayer: first });
+                if (r.ok) onStarted(r.state);
+                else setError(r.error);
+              })
+            }
+            className="mt-5 min-h-14 w-full rounded-2xl bg-paper text-base font-extrabold text-ink transition active:scale-[.98] disabled:opacity-50"
+          >
+            {pending ? "Criando…" : `Começar a ${number}ª partida`}
+          </button>
+        </>
+      )}
     </section>
   );
 }
@@ -513,14 +430,12 @@ type FeedItem = Play & { player: PlayerId; round: number };
 export function LiveMatch({
   me,
   initialState,
-  taken,
-  today,
+  upcoming,
   sheetsReady,
 }: {
   me: PlayerId;
   initialState: LiveState | null;
-  taken: TakenSlot[];
-  today: string;
+  upcoming: Upcoming;
   sheetsReady: boolean;
 }) {
   const router = useRouter();
@@ -698,8 +613,7 @@ export function LiveMatch({
         )}
         <StartPanel
           me={me}
-          taken={taken}
-          today={today}
+          upcoming={upcoming}
           onStarted={(s) => {
             setEndedByOther(false);
             applyServer(s);

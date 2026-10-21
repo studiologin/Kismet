@@ -3,7 +3,7 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkPin, createSession, destroySession, getSession, isPinConfigured } from "@/lib/auth";
-import { nowInSaoPaulo } from "@/lib/dates";
+import { MONTHS, nowInSaoPaulo } from "@/lib/dates";
 import { isSheetsConfigured } from "@/lib/google-sheets";
 import {
   CATEGORIES,
@@ -14,7 +14,7 @@ import {
   type Scores,
 } from "@/lib/kismet";
 import { clearLive, getLiveState, saveLivePlay, startLive, undoLivePlay, type LiveState } from "@/lib/live";
-import { buildMatch, matchId } from "@/lib/match";
+import { buildMatch, matchId, nextSlot } from "@/lib/match";
 import { MATCHES_TAG, MatchConflictError, getMatchesFresh, importLegacy, saveMatch } from "@/lib/matches";
 
 const isPlayer = (v: unknown): v is PlayerId => v === "manoel" || v === "ana";
@@ -78,38 +78,32 @@ function validateCard(player: PlayerId, raw: Partial<Record<string, number | nul
 
 export type LiveResult = { ok: true; state: LiveState | null } | { ok: false; error: string; conflict?: boolean };
 
-export async function startLiveAction(input: {
-  date: string;
-  year: number;
-  month: number;
-  number: number;
-  overwrite: boolean;
-  firstPlayer: PlayerId;
-}): Promise<LiveResult> {
+/**
+ * Inicia a PRÓXIMA partida do mês corrente — o jogador não escolhe data nem número:
+ * data = hoje (São Paulo), mês = mês atual, número = primeira partida livre do mês.
+ */
+export async function startLiveAction(input: { firstPlayer: PlayerId }): Promise<LiveResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sessão expirada. Entre novamente." };
-  const headerError = validateHeader(input);
-  if (headerError) return { ok: false, error: headerError };
 
   try {
-    const all = await getMatchesFresh();
-    const inMonth = all.filter((m) => m.year === input.year && m.month === input.month);
-    const taken = inMonth.find((m) => m.number === input.number);
-    if (taken && !input.overwrite) {
-      return { ok: false, conflict: true, error: `A partida ${input.number} deste mês já foi registrada.` };
-    }
-    if (!taken && inMonth.length >= MATCHES_PER_MONTH) {
-      return { ok: false, error: `Este mês já tem ${MATCHES_PER_MONTH} partidas.` };
+    const now = nowInSaoPaulo();
+    const next = nextSlot(await getMatchesFresh(), now.year, now.month);
+    if (next === null) {
+      return {
+        ok: false,
+        error: `As ${MATCHES_PER_MONTH} partidas de ${MONTHS[now.month - 1]} já foram jogadas. A próxima fica para o mês que vem.`,
+      };
     }
     const state = await startLive({
-      key: matchId(input.year, input.month, input.number),
-      date: input.date,
-      year: input.year,
-      month: input.month,
-      number: input.number,
-      overwrite: Boolean(input.overwrite),
+      key: matchId(now.year, now.month, next),
+      date: now.iso,
+      year: now.year,
+      month: now.month,
+      number: next,
+      overwrite: false,
       startedBy: session.player,
-      firstPlayer: isPlayer(input.firstPlayer) ? input.firstPlayer : session.player,
+      firstPlayer: isPlayer(input?.firstPlayer) ? input.firstPlayer : session.player,
     });
     return { ok: true, state };
   } catch (e) {

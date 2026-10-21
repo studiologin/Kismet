@@ -136,7 +136,8 @@ Dois pares mesma cor…Kismet, Total Inferior, Total] · [Ana: idem] · Vencedor
 
 - **Perfis:** em `/registrar` cada um escolhe *Manoel* ou *Ana* e digita o próprio PIN. O celular fica
   logado por 90 dias.
-- **Ao vivo, por turnos:** quem cria a partida escolhe data, nº da partida e **quem começa**. O outro
+- **Ao vivo, por turnos:** o app sempre abre a **próxima partida** do mês (data de hoje e o primeiro
+  número livre: 1ª, 2ª, 3ª — com 3 jogadas o mês fica fechado); quem cria escolhe só **quem começa**. O outro
   abre o app e entra na mesma partida. As jogadas são intercaladas, como no jogo de verdade: na sua
   vez, você escolhe a categoria, marca os pontos (botões rápidos por nº de dados, "fez/riscar" ou o
   valor) e toca em **Salvar jogada** — ela é gravada na hora e a vez passa para o outro, que recebe

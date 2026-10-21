@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LiveMatch } from "@/components/registrar/LiveMatch";
+import { LiveMatch, type Upcoming } from "@/components/registrar/LiveMatch";
 import type { TakenSlot } from "@/components/registrar/MatchForm";
 import { PinGate } from "@/components/registrar/PinGate";
 import { AppTopBar } from "@/components/app/AppTopBar";
@@ -8,6 +8,7 @@ import { nowInSaoPaulo } from "@/lib/dates";
 import { isSheetsConfigured } from "@/lib/google-sheets";
 import { PLAYER_NAME } from "@/lib/kismet";
 import { getLiveState } from "@/lib/live";
+import { nextSlot } from "@/lib/match";
 import { getMatches } from "@/lib/matches";
 
 export const metadata: Metadata = { title: "Partida" };
@@ -19,18 +20,25 @@ export default async function RegistrarPage() {
 
   const [{ matches, source }, live] = await Promise.all([getMatches(), getLiveState(true).catch(() => null)]);
   const now = nowInSaoPaulo();
-  const taken: TakenSlot[] =
-    source === "demo"
-      ? []
-      : matches.map((m) => ({
+  const list = source === "demo" ? [] : matches;
+  const played: TakenSlot[] = list
+    .filter((m) => m.year === now.year && m.month === now.month)
+    .map((m) => ({
           year: m.year,
           month: m.month,
           number: m.number,
           date: m.date,
           manoel: m.totals.manoel.total,
           ana: m.totals.ana.total,
-          winner: m.winner === "empate" ? "empate" : `${PLAYER_NAME[m.winner]} venceu`,
-        }));
+      winner: m.winner === "empate" ? "empate" : `${PLAYER_NAME[m.winner]} venceu`,
+    }));
+  const upcoming: Upcoming = {
+    year: now.year,
+    month: now.month,
+    date: now.iso,
+    number: nextSlot(list, now.year, now.month),
+    played,
+  };
 
   return (
     <div className="relative min-h-svh">
@@ -41,8 +49,7 @@ export default async function RegistrarPage() {
         <LiveMatch
           me={session.player}
           initialState={live}
-          taken={taken}
-          today={now.iso}
+          upcoming={upcoming}
           sheetsReady={isSheetsConfigured()}
         />
       </main>
