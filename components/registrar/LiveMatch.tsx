@@ -744,6 +744,8 @@ export function LiveMatch({
         </section>
       )}
 
+      <ScoreSheet me={me} live={live} flash={flash} lastPlay={lastOverall ? { player: lastOverall.player, cat: lastOverall.cat } : null} />
+
       {/* últimas jogadas */}
       {feed.length > 0 && (
         <section aria-label="Últimas jogadas" className="glass rounded-[1.5rem] p-4">
@@ -763,8 +765,6 @@ export function LiveMatch({
           </ol>
         </section>
       )}
-
-      <ScoreSheet me={me} live={live} flash={flash} lastPlay={lastOverall ? { player: lastOverall.player, cat: lastOverall.cat } : null} />
 
       <div className="flex flex-wrap justify-center gap-4 pt-2 text-sm">
         <button type="button" onClick={() => setConfirm("cancel")} className="font-semibold text-mist hover:text-ana">
